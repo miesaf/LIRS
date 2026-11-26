@@ -21,11 +21,11 @@
 		if(isset($_POST['REG']))
 		{	
 			// Variables from upk.php
-			$U_ID		= mysql_real_escape_string($_POST['U_ID']);
-			$U_NAME		= mysql_real_escape_string($_POST['U_NAME']);
-			$U_PWD1		= mysql_real_escape_string($_POST['U_PWD1']);
-			$U_PWD2		= mysql_real_escape_string($_POST['U_PWD2']);
-			$U_PHONE	= mysql_real_escape_string($_POST['U_PHONE']);
+			$U_ID		= mysqli_real_escape_string($condb, $_POST['U_ID']);
+			$U_NAME		= mysqli_real_escape_string($condb, $_POST['U_NAME']);
+			$U_PWD1		= mysqli_real_escape_string($condb, $_POST['U_PWD1']);
+			$U_PWD2		= mysqli_real_escape_string($condb, $_POST['U_PWD2']);
+			$U_PHONE	= mysqli_real_escape_string($condb, $_POST['U_PHONE']);
 			
 			if($U_PWD1 == $U_PWD2)
 			{
@@ -33,7 +33,7 @@
 				$sql="INSERT INTO UPK (U_ID, U_NAME, U_PWD, U_PHONE) VALUES ($U_ID, '$U_NAME', '$U_PWD1', '$U_PHONE')";
 				
 				// execute query
-				$exe_sql = mysql_query($sql);
+				$exe_sql = mysqli_query($condb, $sql);
 				
 				// confirming the record is added
 				if ($exe_sql)
@@ -49,7 +49,7 @@
 				}
 				else
 				{
-					echo "SQL insert statement failed.<br>" . mysql_error();
+					echo "SQL insert statement failed.<br>";
 					echo '<html>
 							<head>
 								<script>
@@ -77,10 +77,10 @@
 		if(isset($_GET['DEL']))
 		{
 			// get ID value
-			$ID = mysql_real_escape_string($_GET['DEL']);
+			$ID = mysqli_real_escape_string($condb, $_GET['DEL']);
 			
 			// delete the entry
-			$result = mysql_query("DELETE FROM UPK WHERE U_ID = \"$ID\""); 
+			$result = mysqli_query($condb, "DELETE FROM UPK WHERE U_ID = \"$ID\""); 
 			
 			// check for deletion
 			if ($result)
@@ -96,7 +96,7 @@
 			}
 			else
 			{
-				//echo "SQL insert statement failed.<br>" . mysql_error();
+				//echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>
@@ -111,12 +111,12 @@
 		// Edit account
 		if(isset($_POST['EDIT']))
 		{
-			$ID2		= mysql_real_escape_string($_POST['ID2']);
-			$U_ID		= mysql_real_escape_string($_POST['U_ID']);
-			$U_NAME		= mysql_real_escape_string($_POST['U_NAME']);
-			$U_PWD1		= mysql_real_escape_string($_POST['U_PWD1']);
-			$U_PWD2		= mysql_real_escape_string($_POST['U_PWD2']);
-			$U_PHONE	= mysql_real_escape_string($_POST['U_PHONE']);
+			$ID2		= mysqli_real_escape_string($condb, $_POST['ID2']);
+			$U_ID		= mysqli_real_escape_string($condb, $_POST['U_ID']);
+			$U_NAME		= mysqli_real_escape_string($condb, $_POST['U_NAME']);
+			$U_PWD1		= mysqli_real_escape_string($condb, $_POST['U_PWD1']);
+			$U_PWD2		= mysqli_real_escape_string($condb, $_POST['U_PWD2']);
+			$U_PHONE	= mysqli_real_escape_string($condb, $_POST['U_PHONE']);
 			
 			if($U_PWD1 == hash('sha256', "my_old_password"))
 			{
@@ -142,7 +142,7 @@
 			}
 			
 			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = mysqli_query($condb, $sql);
 			
 			// confirming the record is added
 			if ($exe_sql)
@@ -158,7 +158,7 @@
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
+				echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>
@@ -256,10 +256,10 @@
 					$sql = "SELECT * FROM UPK WHERE U_ID = '$EDIT_ID'";
 					
 					// execute query
-					$result = mysql_query($sql) or die("SQL select statement failed");
+					$result = mysqli_query($condb, $sql) or die("SQL select statement failed");
 					
 					// iterate through all rows in result set
-					$row = mysql_fetch_array($result);
+					$row = mysqli_fetch_array($result);
 					
 					// extract specific fields
 					$U_ID		= $row["U_ID"];
@@ -396,11 +396,11 @@
 									$sql = "SELECT * FROM UPK WHERE U_ID != 12345 ORDER BY U_NAME";
 									
 									// execute listing query
-									$result = mysql_query($sql) or die("SQL select statement failed");
+									$result = mysqli_query($condb, $sql) or die("SQL select statement failed");
 
 									// Papar table		
 									$BIL = 0;
-									while ($row = mysql_fetch_array($result))
+									while ($row = mysqli_fetch_array($result))
 									{
 										$BIL++;
 										

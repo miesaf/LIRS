@@ -25,7 +25,7 @@
 			$sql="DELETE FROM ROOM WHERE R_ID = '$DEL_ID'";
 			
 			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = mysqli_query($condb, $sql);
 			
 			// confirming the record is added
 			if ($exe_sql)
@@ -41,7 +41,7 @@
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
+				echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>
@@ -160,8 +160,8 @@
                         <?php                            
 							$BIL = 1;
 							$sql_choose = "SELECT * FROM ROOM ORDER BY R_HOUSE, R_ID";
-							$result_choose = mysql_query($sql_choose);
-							while ($row = mysql_fetch_array($result_choose))
+							$result_choose = mysqli_query($condb, $sql_choose);
+							while ($row = mysqli_fetch_array($result_choose))
 							{
 								$R_ID 		= $row["R_ID"];
 								$R_TYPE 	= $row["R_TYPE"];
@@ -177,8 +177,8 @@
 								{	$R_TYPE = "One King Bed";	}
 								
 								$sql_display = "SELECT H_NAME FROM HOUSE WHERE H_ID = '$R_HOUSE'";
-								$result_dispay = mysql_query($sql_display);
-								while($row = mysql_fetch_array($result_dispay)) { $DHOUSE = $row["H_NAME"]; }
+								$result_dispay = mysqli_query($condb, $sql_display);
+								while($row = mysqli_fetch_array($result_dispay)) { $DHOUSE = $row["H_NAME"]; }
 								
 								if($R_STAT == true)
 								{	$R_STAT = "Available";	}

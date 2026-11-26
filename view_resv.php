@@ -26,8 +26,8 @@
 				$APP_STAT	= true;
 				
 				$sql2		= "SELECT RV_ROOM FROM RESERVE WHERE RV_OUT > \"$RV_IN\" AND RV_STAT = \"AP\" UNION SELECT RV_ROOM FROM RESERVE WHERE RV_IN > \"$RV_OUT\" AND RV_STAT = \"AP\" GROUP BY RV_ROOM";
-				$result2	= mysql_query($sql2);
-				while($row2 = mysql_fetch_array($result2))
+				$result2	= mysqli_query($condb, $sql2);
+				while($row2 = mysqli_fetch_array($result2))
 				{
 					$RV_ROOM		= $row2["RV_ROOM"];
 					$OVLP[$RV_ROOM]	= true;
@@ -44,7 +44,7 @@
 					$sql="UPDATE RESERVE SET RV_STAT = \"AP\" WHERE RV_ID = $APP_ID";
 					
 					// execute query
-					$exe_sql = mysql_query($sql);
+					$exe_sql = mysqli_query($condb, $sql);
 					
 					// confirming the record is added
 					if ($exe_sql)
@@ -60,7 +60,7 @@
 					}
 					else
 					{
-						echo "SQL insert statement failed.<br>" . mysql_error();
+						echo "SQL insert statement failed.<br>";
 						echo '<html>
 								<head>
 									<script>
@@ -94,7 +94,7 @@
 				$sql="UPDATE RESERVE SET RV_STAT = \"DY\" WHERE RV_ID = $DEN_ID";
 				
 				// execute query
-				$exe_sql = mysql_query($sql);
+				$exe_sql = mysqli_query($condb, $sql);
 				
 				// confirming the record is added
 				if ($exe_sql)
@@ -110,7 +110,7 @@
 				}
 				else
 				{
-					echo "SQL insert statement failed.<br>" . mysql_error();
+					echo "SQL insert statement failed.<br>";
 					echo '<html>
 							<head>
 								<script>
@@ -135,7 +135,7 @@
 				$sql="DELETE FROM RESERVE WHERE RV_ID = $DEL_ID AND RV_STUD = $STUD_ID";
 				
 				// execute query
-				$exe_sql = mysql_query($sql);
+				$exe_sql = mysqli_query($condb, $sql);
 				
 				// confirming the record is added
 				if ($exe_sql)
@@ -151,7 +151,7 @@
 				}
 				else
 				{
-					echo "SQL insert statement failed.<br>" . mysql_error();
+					echo "SQL insert statement failed.<br>";
 					echo '<html>
 							<head>
 								<script>
@@ -170,7 +170,7 @@
 				$sql="DELETE FROM RESERVE WHERE RV_ID = $DEL_ID";
 				
 				// execute query
-				$exe_sql = mysql_query($sql);
+				$exe_sql = mysqli_query($condb, $sql);
 				
 				// confirming the record is added
 				if ($exe_sql)
@@ -186,7 +186,7 @@
 				}
 				else
 				{
-					echo "SQL insert statement failed.<br>" . mysql_error();
+					echo "SQL insert statement failed.<br>";
 					echo '<html>
 							<head>
 								<script>
@@ -298,10 +298,10 @@
 						}
 						
 						// execute query
-						$result = mysql_query($sql) or die("SQL select statement failed");
+						$result = mysqli_query($condb, $sql) or die("SQL select statement failed");
 						
 						// iterate through all rows in result set
-						$row = mysql_fetch_array($result);
+						$row = mysqli_fetch_array($result);
 					
 						// extract specific fields
 						$RV_ID		= $row["RV_ID"];
@@ -316,8 +316,8 @@
 						{
 							// student info
 							$sql2		= "SELECT * FROM STUDENT WHERE S_ID = $RV_STUD";
-							$result2	= mysql_query($sql2) or die("SQL select statement failed");
-							$row2		= mysql_fetch_array($result2);
+							$result2	= mysqli_query($condb, $sql2) or die("SQL select statement failed");
+							$row2		= mysqli_fetch_array($result2);
 							
 							$S_ID		= $row2["S_ID"];
 							$S_NAME		= $row2["S_NAME"];
@@ -329,23 +329,23 @@
 							
 							// Room name
 							$sql3		= "SELECT R_HOUSE, R_TYPE FROM ROOM WHERE R_ID = \"$RV_ROOM\"";
-							$result3	= mysql_query($sql3);
-							$row3		= mysql_fetch_array($result3);
+							$result3	= mysqli_query($condb, $sql3);
+							$row3		= mysqli_fetch_array($result3);
 							
 							$R_HOUSE	= $row3["R_HOUSE"];
 							$R_TYPE		= $row3["R_TYPE"];
 							
 							// Display programme name
 							$sql4		= "SELECT PROG FROM PROGRAMME WHERE ID_PROG = \"$S_PROG\"";
-							$result4	= mysql_query($sql4);
-							$row4		= mysql_fetch_array($result4);
+							$result4	= mysqli_query($condb, $sql4);
+							$row4		= mysqli_fetch_array($result4);
 							
 							$DPROG		= $row4["PROG"];
 							
 							// Display house name
 							$sql5		= "SELECT H_NAME FROM HOUSE WHERE H_ID = \"$R_HOUSE\"";
-							$result5	= mysql_query($sql5);
-							$row5		= mysql_fetch_array($result5);
+							$result5	= mysqli_query($condb, $sql5);
+							$row5		= mysqli_fetch_array($result5);
 							
 							$DHOUSE = $row5["H_NAME"];
 						

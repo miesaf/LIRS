@@ -20,16 +20,16 @@
 		if(isset($_POST["REG"]))
 		{
 			// Variables from pendaftaran.php
-			$R_ID		= mysql_real_escape_string($_POST['R_ID']);
-			$R_TYPE		= mysql_real_escape_string($_POST['R_TYPE']);
-			$R_HOUSE	= mysql_real_escape_string($_POST['R_HOUSE']);
-			$R_STAT		= mysql_real_escape_string($_POST['R_STAT']);
+			$R_ID		= mysqli_real_escape_string($condb, $_POST['R_ID']);
+			$R_TYPE		= mysqli_real_escape_string($condb, $_POST['R_TYPE']);
+			$R_HOUSE	= mysqli_real_escape_string($condb, $_POST['R_HOUSE']);
+			$R_STAT		= mysqli_real_escape_string($condb, $_POST['R_STAT']);
 			
 			//SQL query command
 			$sql="INSERT INTO ROOM (R_ID, R_TYPE, R_HOUSE, R_STAT) VALUES ('$R_ID', '$R_TYPE', '$R_HOUSE', $R_STAT)";
 			
 			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = mysqli_query($condb, $sql);
 			
 			// confirming the record is added
 			if ($exe_sql)
@@ -45,7 +45,7 @@
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
+				echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>
@@ -171,8 +171,8 @@
 												<option disabled> </option>
 												<?php
 													$sql_choose = "SELECT * FROM HOUSE ORDER BY H_NAME";
-													$result_choose = mysql_query($sql_choose);
-													while ($row = mysql_fetch_array($result_choose))
+													$result_choose = mysqli_query($condb, $sql_choose);
+													while ($row = mysqli_fetch_array($result_choose))
 													{
 														$H1 = $row["H_ID"];
 														$H2 = $row["H_NAME"];

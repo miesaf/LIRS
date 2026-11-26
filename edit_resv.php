@@ -21,11 +21,11 @@
 		if(isset($_POST["REG2"]))
 		{
 			// Variables from pendaftaran.php
-			$TRV_ID		= mysql_real_escape_string($_POST['TRV_ID']);
-			$RV_STUD	= mysql_real_escape_string($_POST['RV_STUD']);
-			$RV_IN		= mysql_real_escape_string($_POST['RV_IN']);
-			$RV_OUT		= mysql_real_escape_string($_POST['RV_OUT']);
-			$RV_ROOM	= mysql_real_escape_string($_POST['RV_ROOM']);
+			$TRV_ID		= mysqli_real_escape_string($condb, $_POST['TRV_ID']);
+			$RV_STUD	= mysqli_real_escape_string($condb, $_POST['RV_STUD']);
+			$RV_IN		= mysqli_real_escape_string($condb, $_POST['RV_IN']);
+			$RV_OUT		= mysqli_real_escape_string($condb, $_POST['RV_OUT']);
+			$RV_ROOM	= mysqli_real_escape_string($condb, $_POST['RV_ROOM']);
 			
 			$h			= "8";	// to rematch time with Malaysian GMT +8 time (please truncate the +/- sign)
 			$hm			= $h * 60; 
@@ -54,7 +54,7 @@
 			$sql="UPDATE RESERVE SET RV_STUD = $RV_STUD, RV_IN = \"$RV_IN\", RV_OUT = \"$RV_OUT\", RV_ROOM = \"$RV_ROOM\", RV_DATE = \"$NEW_DATE\", RV_STAT = \"PG\" WHERE RV_ID = $TRV_ID";
 			
 			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = mysqli_query($condb, $sql);
 			
 			// confirming the record was edited
 			if ($exe_sql)
@@ -75,7 +75,7 @@
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
+				echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>
@@ -201,10 +201,10 @@
 													$sql	= "SELECT * FROM RESERVE WHERE RV_ID = \"$E_ID\"";
 													
 													// execute query
-													$result = mysql_query($sql) or die("SQL select statement failed");
+													$result = mysqli_query($condb, $sql) or die("SQL select statement failed");
 													
 													// iterate through all rows in result set
-													$row = mysql_fetch_array($result);
+													$row = mysqli_fetch_array($result);
 													
 													$TRV_ID		= $row["RV_ID"];
 													$RV_STUD	= $row["RV_STUD"];
@@ -221,8 +221,8 @@
 														$T2_PROG	= null;
 														
 														$sql_choose = "SELECT S_ID, S_NAME, S_PROG FROM STUDENT ORDER BY S_PROG, S_NAME";
-														$result_choose = mysql_query($sql_choose);
-														while ($row = mysql_fetch_array($result_choose))
+														$result_choose = mysqli_query($condb, $sql_choose);
+														while ($row = mysqli_fetch_array($result_choose))
 														{
 															
 															$S_ID 	= $row["S_ID"];
@@ -261,10 +261,10 @@
 													$sql	= "SELECT RV_ID, RV_IN, RV_OUT, RV_ROOM FROM RESERVE WHERE RV_ID = \"$E_ID\" AND RV_STUD = $T_ID";
 													
 													// execute query
-													$result = mysql_query($sql) or die("SQL select statement failed");
+													$result = mysqli_query($condb, $sql) or die("SQL select statement failed");
 													
 													// iterate through all rows in result set
-													$row = mysql_fetch_array($result);
+													$row = mysqli_fetch_array($result);
 													
 													$TRV_ID		= $row["RV_ID"];
 													$RV_IN		= $row["RV_IN"];
@@ -311,16 +311,16 @@
 							$RV_ROOM2	= $_POST["RV_ROOM"];
 							
 							$sql1		= "SELECT R_ID FROM ROOM";
-							$result1	= mysql_query($sql1);
-							while($row1 = mysql_fetch_array($result1))
+							$result1	= mysqli_query($condb, $sql1);
+							while($row1 = mysqli_fetch_array($result1))
 							{
 								$R_ID		= $row1["R_ID"];
 								$AR[$R_ID]	= true;
 							}
 							
 							$sql2		= "SELECT RV_ROOM FROM RESERVE WHERE RV_IN < \"$RV_OUT\" AND RV_OUT > \"$RV_IN\" AND RV_STAT != \"DY\" GROUP BY RV_ROOM";
-							$result2	= mysql_query($sql2);
-							while($row2 = mysql_fetch_array($result2))
+							$result2	= mysqli_query($condb, $sql2);
+							while($row2 = mysqli_fetch_array($result2))
 							{
 								$RV_ROOM		= $row2["RV_ROOM"];
 								$AR[$RV_ROOM]	= false;
@@ -365,10 +365,10 @@
 													$DTYPE["KB"]	= "One King Bed";
 													
 													$sql_h		= "SELECT * FROM HOUSE ORDER BY H_NAME";
-													$result_h	= mysql_query($sql_h);
+													$result_h	= mysqli_query($condb, $sql_h);
 													
 													$ind	= 0;
-													while ($row_h = mysql_fetch_array($result_h))
+													while ($row_h = mysqli_fetch_array($result_h))
 													{
 														
 														$H_ID 	= $row_h["H_ID"];
@@ -377,8 +377,8 @@
 														echo "<optgroup label=\"$H_NAME\">";
 														
 														$sql_r		= "SELECT R_ID, R_TYPE FROM ROOM WHERE R_STAT = TRUE AND R_HOUSE = \"$H_ID\" ORDER BY R_TYPE";
-														$result_r	= mysql_query($sql_r);
-														while ($row_r = mysql_fetch_array($result_r))
+														$result_r	= mysqli_query($condb, $sql_r);
+														while ($row_r = mysqli_fetch_array($result_r))
 														{
 															$R_ID		= $row_r["R_ID"];
 															$R_TYPE		= $row_r["R_TYPE"];

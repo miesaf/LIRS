@@ -21,19 +21,19 @@
 		{
 			// Variables from pendaftaran.php
 			$T_ID		= $_SESSION["IDENT"];
-			$S_ID		= mysql_real_escape_string($_POST['S_ID']);
-			$S_NAME		= mysql_real_escape_string($_POST['S_NAME']);
-			$S_IC		= mysql_real_escape_string($_POST['S_IC']);
-			$S_PROG		= mysql_real_escape_string($_POST['S_PROG']);
-			$S_PART		= mysql_real_escape_string($_POST['S_PART']);
-			$S_PHONE	= mysql_real_escape_string($_POST['S_PHONE']);
-			$S_MAIL		= mysql_real_escape_string($_POST['S_MAIL']);
+			$S_ID		= mysqli_real_escape_string($condb, $_POST['S_ID']);
+			$S_NAME		= mysqli_real_escape_string($condb, $_POST['S_NAME']);
+			$S_IC		= mysqli_real_escape_string($condb, $_POST['S_IC']);
+			$S_PROG		= mysqli_real_escape_string($condb, $_POST['S_PROG']);
+			$S_PART		= mysqli_real_escape_string($condb, $_POST['S_PART']);
+			$S_PHONE	= mysqli_real_escape_string($condb, $_POST['S_PHONE']);
+			$S_MAIL		= mysqli_real_escape_string($condb, $_POST['S_MAIL']);
 			
 			//SQL query command
 			$sql="UPDATE STUDENT SET S_ID = $S_ID, S_NAME = \"$S_NAME\", S_IC = \"$S_IC\", S_PROG = \"$S_PROG\", S_PART = \"$S_PART\", S_PHONE = \"$S_PHONE\", S_MAIL = \"$S_MAIL\" WHERE S_ID = $T_ID";
 			
 			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = mysqli_query($condb, $sql);
 			
 			// confirming the record is added
 			if ($exe_sql)
@@ -52,7 +52,7 @@
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
+				echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>
@@ -68,8 +68,8 @@
 		{
 			$TEMP_ID	= $_SESSION["IDENT"];
 			$sql_choose = "SELECT * FROM STUDENT WHERE S_ID = $TEMP_ID";
-			$result_choose = mysql_query($sql_choose);
-			while ($row = mysql_fetch_array($result_choose))
+			$result_choose = mysqli_query($condb, $sql_choose);
+			while ($row = mysqli_fetch_array($result_choose))
 			{
 				$S_ID 		= $row["S_ID"];
 				$S_NAME 	= $row["S_NAME"];
@@ -195,8 +195,8 @@
 												<option disabled> </option>
 												<?php
 													$sql_choose = "SELECT * FROM PROGRAMME ORDER BY ID_PROG";
-													$result_choose = mysql_query($sql_choose);
-													while ($row = mysql_fetch_array($result_choose))
+													$result_choose = mysqli_query($condb, $sql_choose);
+													while ($row = mysqli_fetch_array($result_choose))
 													{
 														$PROG1 = $row["ID_PROG"];
 														$PROG2 = $row["PROG"];

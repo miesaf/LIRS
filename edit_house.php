@@ -20,15 +20,15 @@
 		if(isset($_POST["REG"]))
 		{
 			// Variables from pendaftaran.php
-			$T_ID		= mysql_real_escape_string($_POST['T_ID']);
-			$H_ID		= mysql_real_escape_string($_POST['H_ID']);
-			$H_NAME		= mysql_real_escape_string($_POST['H_NAME']);
+			$T_ID		= mysqli_real_escape_string($condb, $_POST['T_ID']);
+			$H_ID		= mysqli_real_escape_string($condb, $_POST['H_ID']);
+			$H_NAME		= mysqli_real_escape_string($condb, $_POST['H_NAME']);
 			
 			//SQL query command
 			$sql="UPDATE HOUSE SET H_ID = \"$H_ID\", H_NAME = \"$H_NAME\" WHERE H_ID = \"$T_ID\"";
 			
 			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = mysqli_query($condb, $sql);
 			
 			// confirming the record is added
 			if ($exe_sql)
@@ -44,7 +44,7 @@
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
+				echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>
@@ -61,8 +61,8 @@
 			$TEMP_ID	= $_GET["ID"];
 			$H_ID		= null;
 			$sql_choose = "SELECT * FROM HOUSE WHERE H_ID = \"$TEMP_ID\"";
-			$result_choose = mysql_query($sql_choose);
-			while ($row = mysql_fetch_array($result_choose))
+			$result_choose = mysqli_query($condb, $sql_choose);
+			while ($row = mysqli_fetch_array($result_choose))
 			{
 				$H_ID 		= $row["H_ID"];
 				$H_NAME 	= $row["H_NAME"];

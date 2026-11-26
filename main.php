@@ -106,10 +106,10 @@
 		$sql	= "SELECT * FROM STUDENT WHERE S_ID = $ident";
 		
 		// execute query
-		$result = mysql_query($sql) or die("SQL select statement failed");
+		$result = mysqli_query($condb, $sql) or die("SQL select statement failed");
 		
 		// iterate through all rows in result set
-		$row = mysql_fetch_array($result);
+		$row = mysqli_fetch_array($result);
 	
 		// extract specific fields
 		$S_ID		= $row["S_ID"];
@@ -121,8 +121,8 @@
 		$S_MAIL		= $row["S_MAIL"];
 		
 		$sql2		= "SELECT PROG FROM PROGRAMME WHERE ID_PROG = \"$S_PROG\"";
-		$result2	= mysql_query($sql2);
-		while($row2 = mysql_fetch_array($result2))
+		$result2	= mysqli_query($condb, $sql2);
+		while($row2 = mysqli_fetch_array($result2))
 		{	$DPROG = $row2["PROG"];	}
 		?>
 				<div class="panel panel-default">
@@ -177,10 +177,10 @@
 			$sql	= "SELECT U_ID, U_NAME, U_PHONE FROM UPK WHERE U_ID = $ident";
 			
 			// execute query
-			$result = mysql_query($sql) or die("SQL select statement failed");
+			$result = mysqli_query($condb, $sql) or die("SQL select statement failed");
 			
 			// iterate through all rows in result set
-			$row = mysql_fetch_array($result);
+			$row = mysqli_fetch_array($result);
 		
 			// extract specific fields
 			$U_ID		= $row["U_ID"];

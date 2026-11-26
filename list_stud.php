@@ -125,15 +125,15 @@
 							$sql = "SELECT S_ID, S_NAME, S_PART, S_PROG FROM STUDENT ORDER BY S_PART, S_PROG, S_NAME";
 								
 							// execute listing query
-							$result	= mysql_query($sql) or die("SQL select statement failed");
+							$result	= mysqli_query($condb, $sql) or die("SQL select statement failed");
 							
 							// Initialise index number
 							$BIL = 0;
 							
 							// Display programme name array
 							$sql_dprog			= "SELECT * FROM PROGRAMME ORDER BY ID_PROG";
-							$result_dprog		= mysql_query($sql_dprog);
-							while($row_dprog	= mysql_fetch_array($result_dprog))
+							$result_dprog		= mysqli_query($condb, $sql_dprog);
+							while($row_dprog	= mysqli_fetch_array($result_dprog))
 							{
 								$DID_PROG			= $row_dprog["ID_PROG"];
 								$DPROG2				= $row_dprog["PROG"];
@@ -141,7 +141,7 @@
 							}
 							
 							// iterate through all rows in result set
-							while ($row = mysql_fetch_array($result))
+							while ($row = mysqli_fetch_array($result))
 							{
 								$BIL++;
 								

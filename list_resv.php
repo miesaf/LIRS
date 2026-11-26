@@ -127,15 +127,15 @@
 							$sql = "SELECT * FROM RESERVE WHERE RV_STUD = $ID ORDER BY RV_DATE";
 								
 							// execute listing query
-							$result	= mysql_query($sql) or die("SQL select statement failed");
+							$result	= mysqli_query($condb, $sql) or die("SQL select statement failed");
 							
 							// Initialise index number
 							$BIL = 1;
 							
 							// Display house name array
 							$sql_dhn	= "SELECT * FROM HOUSE";
-							$result_dhn	= mysql_query($sql_dhn);
-							while($row_dhn	= mysql_fetch_array($result_dhn))
+							$result_dhn	= mysqli_query($condb, $sql_dhn);
+							while($row_dhn	= mysqli_fetch_array($result_dhn))
 							{
 								$DHN			= $row_dhn["H_ID"];
 								$DHN2			= $row_dhn["H_NAME"];
@@ -144,8 +144,8 @@
 							
 							// Display house ID name array
 							$sql_dhi	= "SELECT R_ID, R_HOUSE FROM ROOM";
-							$result_dhi	= mysql_query($sql_dhi);
-							while($row_dhi	= mysql_fetch_array($result_dhi))
+							$result_dhi	= mysqli_query($condb, $sql_dhi);
+							while($row_dhi	= mysqli_fetch_array($result_dhi))
 							{
 								$DHI		= $row_dhi["R_ID"];
 								$DHI2		= $row_dhi["R_HOUSE"];
@@ -172,7 +172,7 @@
 							$R_STAT["PG"]	= "Pending";
 							
 							// iterate through all rows in result set
-							while ($row = mysql_fetch_array($result))
+							while ($row = mysqli_fetch_array($result))
 							{
 								// extract specific fields
 								$RV_ID		= $row["RV_ID"];

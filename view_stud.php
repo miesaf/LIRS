@@ -24,7 +24,7 @@
 			$sql="DELETE FROM STUDENT WHERE S_ID = $DEL_ID";
 			
 			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = mysqli_query($condb, $sql);
 			
 			// confirming the record is added
 			if ($exe_sql)
@@ -40,7 +40,7 @@
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
+				echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>
@@ -137,10 +137,10 @@
 						$sql	= "SELECT * FROM STUDENT WHERE S_ID = $ID";
 						
 						// execute query
-						$result = mysql_query($sql) or die("SQL select statement failed");
+						$result = mysqli_query($condb, $sql) or die("SQL select statement failed");
 						
 						// iterate through all rows in result set
-						$row = mysql_fetch_array($result);
+						$row = mysqli_fetch_array($result);
 					
 						// extract specific fields
 						$S_ID		= $row["S_ID"];
@@ -154,8 +154,8 @@
 						if(isset($S_ID))
 						{
 							$sql2		= "SELECT PROG FROM PROGRAMME WHERE ID_PROG = \"$S_PROG\"";
-							$result2	= mysql_query($sql2);
-							while($row2 = mysql_fetch_array($result2))
+							$result2	= mysqli_query($condb, $sql2);
+							while($row2 = mysqli_fetch_array($result2))
 							{	$DPROG = $row2["PROG"];	}
 						}
 					}

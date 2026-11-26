@@ -20,14 +20,14 @@
 		if(isset($_POST["REG"]))
 		{
 			// Variables from pendaftaran.php
-			$H_ID		= mysql_real_escape_string($_POST['H_ID']);
-			$H_NAME		= mysql_real_escape_string($_POST['H_NAME']);
+			$H_ID		= mysqli_real_escape_string($condb, $_POST['H_ID']);
+			$H_NAME		= mysqli_real_escape_string($condb, $_POST['H_NAME']);
 			
 			//SQL query command
 			$sql="INSERT INTO HOUSE (H_ID, H_NAME) VALUES ('$H_ID', '$H_NAME')";
 			
 			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = mysqli_query($condb, $sql);
 			
 			// confirming the record is added
 			if ($exe_sql)
@@ -43,7 +43,7 @@
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
+				echo "SQL insert statement failed.<br>";
 				echo '<html>
 						<head>
 							<script>

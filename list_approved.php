@@ -125,15 +125,15 @@
 							$sql = "SELECT * FROM RESERVE WHERE RV_STAT = \"AP\" ORDER BY RV_IN";
 								
 							// execute listing query
-							$result	= mysql_query($sql) or die("SQL select statement failed");
+							$result	= mysqli_query($condb, $sql) or die("SQL select statement failed");
 							
 							// Initialise index number
 							$BIL = 1;
 							
 							// Display house name array
 							$sql_dhs		= "SELECT * FROM HOUSE ORDER BY H_ID";
-							$result_dhs		= mysql_query($sql_dhs);
-							while($row_dhs	= mysql_fetch_array($result_dhs))
+							$result_dhs		= mysqli_query($condb, $sql_dhs);
+							while($row_dhs	= mysqli_fetch_array($result_dhs))
 							{
 								$DID_HS			= $row_dhs["H_ID"];
 								$DHS2			= $row_dhs["H_NAME"];
@@ -142,8 +142,8 @@
 							
 							// Display student name array
 							$sql_dsn	= "SELECT S_ID, S_NAME FROM STUDENT ORDER BY S_ID";
-							$result_dsn	= mysql_query($sql_dsn);
-							while($row_dsn	= mysql_fetch_array($result_dsn))
+							$result_dsn	= mysqli_query($condb, $sql_dsn);
+							while($row_dsn	= mysqli_fetch_array($result_dsn))
 							{
 								$DID_SN			= $row_dsn["S_ID"];
 								$DSN2			= $row_dsn["S_NAME"];
@@ -165,7 +165,7 @@
 							$MONTH["12"]	= "Dec";
 							
 							// iterate through all rows in result set
-							while ($row = mysql_fetch_array($result))
+							while ($row = mysqli_fetch_array($result))
 							{
 								// extract specific fields
 								$RV_ID		= $row["RV_ID"];
@@ -177,8 +177,8 @@
 								
 								// Decode house name
 								$H_SQL	= "SELECT H_NAME FROM HOUSE WHERE H_ID = (SELECT R_HOUSE FROM ROOM WHERE R_ID = \"$RV_ROOM\")";
-								$RES_H	= mysql_query($H_SQL);
-								$ROW_H	= mysql_fetch_array($RES_H);
+								$RES_H	= mysqli_query($condb, $H_SQL);
+								$ROW_H	= mysqli_fetch_array($RES_H);
 								$DHOUSE	= $ROW_H["H_NAME"];
 								
 								// Reserve date formater
