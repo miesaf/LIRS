@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,13 +10,8 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 	?>
 
     <title>[LIRS] - List Student</title>
@@ -67,7 +63,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -121,19 +117,16 @@
                                     </thead>
                                     <tbody>
                         <?php                            
-							// create the listing query
-							$sql = "SELECT S_ID, S_NAME, S_PART, S_PROG FROM STUDENT ORDER BY S_PART, S_PROG, S_NAME";
-								
 							// execute listing query
-							$result	= mysql_query($sql) or die("SQL select statement failed");
+							$result	= db_query("SELECT S_ID, S_NAME, S_PART, S_PROG FROM STUDENT ORDER BY S_PART, S_PROG, S_NAME") or die("SQL select statement failed");
 							
 							// Initialise index number
 							$BIL = 0;
 							
 							// Display programme name array
-							$sql_dprog			= "SELECT * FROM PROGRAMME ORDER BY ID_PROG";
-							$result_dprog		= mysql_query($sql_dprog);
-							while($row_dprog	= mysql_fetch_array($result_dprog))
+							$DPROG				= [];
+							$result_dprog		= db_query("SELECT * FROM PROGRAMME ORDER BY ID_PROG");
+							while($row_dprog	= mysqli_fetch_array($result_dprog))
 							{
 								$DID_PROG			= $row_dprog["ID_PROG"];
 								$DPROG2				= $row_dprog["PROG"];
@@ -141,20 +134,21 @@
 							}
 							
 							// iterate through all rows in result set
-							while ($row = mysql_fetch_array($result))
+							while ($row = mysqli_fetch_array($result))
 							{
 								$BIL++;
 								
 								// extract specific fields
-								$S_ID 	= $row["S_ID"];
-								$S_NAME = $row["S_NAME"];
-								$S_PART	= $row["S_PART"];
-								$S_PROG	= $row["S_PROG"];
+								$S_ID 	= e($row["S_ID"]);
+								$S_NAME = e($row["S_NAME"]);
+								$S_PART	= e($row["S_PART"]);
+								$S_PROG	= e($row["S_PROG"] . " - " . ($DPROG[$row["S_PROG"]] ?? ''));
 								
 								// output student information
 								echo "<tr>\n\t\t\t\t\t\t\t";
 								echo "<td align=center>$BIL</td>\n\t\t\t\t\t\t\t";
-								echo "<td align=center><a target='_blank' href='view_stud.php?ID=$S_ID'>$S_ID</a></td>\n\t\t\t\t\t\t\t<td>$S_NAME</td>\n\t\t\t\t\t\t\t<td align=center>$S_PART</td>\n\t\t\t\t\t\t\t<td align=center>$S_PROG - $DPROG[$S_PROG]</td>\n\t\t\t\t\t\t\t";
+								echo "<td align=center><a target='_blank' href='view_stud.php?ID=$S_ID'>$S_ID</a></td>\n\t\t\t\t\t\t\t<td>$S_NAME</td>\n\t\t\t\t\t\t\t<td align=center>$S_PART</td>\n\t\t\t\t\t\t\t<td align=center>$S_PROG</td>
+\n\t\t\t\t\t\t\t";
 								echo "</tr>\n\t\t\t\t\t\t"; 
 							}
                         ?>

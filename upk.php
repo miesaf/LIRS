@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,164 +10,96 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		// Register account
 		if(isset($_POST['REG']))
 		{	
-			// Variables from upk.php
-			$U_ID		= mysql_real_escape_string($_POST['U_ID']);
-			$U_NAME		= mysql_real_escape_string($_POST['U_NAME']);
-			$U_PWD1		= mysql_real_escape_string($_POST['U_PWD1']);
-			$U_PWD2		= mysql_real_escape_string($_POST['U_PWD2']);
-			$U_PHONE	= mysql_real_escape_string($_POST['U_PHONE']);
+			$U_ID		= request_id($_POST, 'U_ID');
+			$U_NAME		= request_text($_POST, 'U_NAME') ?? '';
+			$U_PWD1		= request_password('U_PWD1');
+			$U_PWD2		= request_password('U_PWD2');
+			$U_PHONE	= request_text($_POST, 'U_PHONE') ?? '';
 			
-			if($U_PWD1 == $U_PWD2)
+			if($U_PWD1 !== $U_PWD2)
 			{
-				//SQL query command
-				$sql="INSERT INTO UPK (U_ID, U_NAME, U_PWD, U_PHONE) VALUES ($U_ID, '$U_NAME', '$U_PWD1', '$U_PHONE')";
-				
-				// execute query
-				$exe_sql = mysql_query($sql);
-				
-				// confirming the record is added
-				if ($exe_sql)
-				{
-					echo '<html>
-							<head>
-								<script>
-									window.alert("UPK staff registration successfull!");
-								</script>
-								<meta http-equiv="refresh" content="0; url=upk.php" />
-							</head>
-						</html>';
-				}
-				else
-				{
-					echo "SQL insert statement failed.<br>" . mysql_error();
-					echo '<html>
-							<head>
-								<script>
-									window.alert("UPK staff registration failed!");
-									window.history.go(-1);
-								</script>
-							</head>
-						</html>';
-				}
+				js_alert("Password didn't match!");
+			}
+			elseif($U_ID !== null && $U_NAME !== '' && $U_PWD1 !== ''
+				&& db_query("INSERT INTO UPK (U_ID, U_NAME, U_PWD, U_PHONE) VALUES (?, ?, ?, ?)",
+					[$U_ID, $U_NAME, password_hash($U_PWD1, PASSWORD_DEFAULT), $U_PHONE]))
+			{
+				js_alert("UPK staff registration successfull!", "upk.php");
 			}
 			else
 			{
-				echo '<html>
-							<head>
-								<script>
-									window.alert("Password didn\'t match!");
-									window.history.go(-1);
-								</script>
-							</head>
-						</html>';
-			}
-		}
-
-		// Delete account
-		if(isset($_GET['DEL']))
-		{
-			// get ID value
-			$ID = mysql_real_escape_string($_GET['DEL']);
-			
-			// delete the entry
-			$result = mysql_query("DELETE FROM UPK WHERE U_ID = \"$ID\""); 
-			
-			// check for deletion
-			if ($result)
-			{
-			   echo '<html>
-						<head>
-							<script>
-								window.alert("UPK staff deleted!");
-							</script>
-							<meta http-equiv="refresh" content="0; url=upk.php" />
-						</head>
-					</html>';
-			}
-			else
-			{
-				//echo "SQL insert statement failed.<br>" . mysql_error();
-				echo '<html>
-						<head>
-							<script>
-								window.alert("UPK staff failed to delete!");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("UPK staff registration failed!");
 			}
 		}
 		
-		// Edit account
-		if(isset($_POST['EDIT']))
+		// Delete account
+		if(isset($_GET['DEL']))
 		{
-			$ID2		= mysql_real_escape_string($_POST['ID2']);
-			$U_ID		= mysql_real_escape_string($_POST['U_ID']);
-			$U_NAME		= mysql_real_escape_string($_POST['U_NAME']);
-			$U_PWD1		= mysql_real_escape_string($_POST['U_PWD1']);
-			$U_PWD2		= mysql_real_escape_string($_POST['U_PWD2']);
-			$U_PHONE	= mysql_real_escape_string($_POST['U_PHONE']);
+			$ID = request_id($_GET, 'DEL');
 			
-			if($U_PWD1 == hash('sha256', "my_old_password"))
+			// Staff cannot delete their own account (they would be locked out at once).
+			if ($ID !== null && (string) $ID !== (string) $_SESSION['lirs_ident']
+				&& db_query("DELETE FROM UPK WHERE U_ID = ?", [$ID]) && db_affected() === 1)
 			{
-				$sql="UPDATE UPK SET U_ID = $U_ID, U_NAME = '$U_NAME', U_PHONE = '$U_PHONE' WHERE U_ID = '$ID2'";
+				js_alert("UPK staff deleted!", "upk.php");
 			}
 			else
 			{
-				if($U_PWD1 == $U_PWD2)
+				js_alert("UPK staff failed to delete!", "upk.php");
+			}
+		}
+		
+		// Edit account: leave both password fields empty to keep the current password.
+		if(isset($_POST['EDIT']))
+		{
+			$ID2		= request_id($_POST, 'ID2');
+			$U_ID		= request_id($_POST, 'U_ID');
+			$U_NAME		= request_text($_POST, 'U_NAME') ?? '';
+			$U_PWD1		= request_password('U_PWD1');
+			$U_PWD2		= request_password('U_PWD2');
+			$U_PHONE	= request_text($_POST, 'U_PHONE') ?? '';
+			
+			if($U_PWD1 !== $U_PWD2)
+			{
+				js_alert("Password didn't match!");
+			}
+			else
+			{
+				$exe_sql = false;
+				if ($ID2 !== null && $U_ID !== null && $U_NAME !== '')
 				{
-					$sql="UPDATE UPK SET U_ID = $U_ID, U_NAME = '$U_NAME', U_PWD = '$U_PWD1', U_PHONE = '$U_PHONE' WHERE U_ID = '$ID2'";
+					if ($U_PWD1 === '')
+					{
+						$exe_sql = db_query("UPDATE UPK SET U_ID = ?, U_NAME = ?, U_PHONE = ? WHERE U_ID = ?", [$U_ID, $U_NAME, $U_PHONE, $ID2]);
+					}
+					else
+					{
+						$exe_sql = db_query("UPDATE UPK SET U_ID = ?, U_NAME = ?, U_PWD = ?, U_PHONE = ? WHERE U_ID = ?",
+							[$U_ID, $U_NAME, password_hash($U_PWD1, PASSWORD_DEFAULT), $U_PHONE, $ID2]);
+					}
+				}
+				
+				// confirming the record is saved
+				if ($exe_sql)
+				{
+					// Staff who change their own ID or name stay logged in under the new ones.
+					if ((string) $ID2 === (string) $_SESSION['lirs_ident'])
+					{
+						$_SESSION['lirs_ident']	= (string) $U_ID;
+						$_SESSION['lirs_name']	= $U_NAME;
+					}
+					js_alert("Account amendment successfull!", "upk.php");
 				}
 				else
 				{
-					echo '<html>
-								<head>
-									<script>
-										window.alert("Password didn\'t match!");
-										window.history.go(-1);
-									</script>
-								</head>
-							</html>';
+					js_alert("Account ammendment failed!");
 				}
-			}
-			
-			// execute query
-			$exe_sql = mysql_query($sql);
-			
-			// confirming the record is added
-			if ($exe_sql)
-			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Account amendment successfull!");
-							</script>
-							<meta http-equiv="refresh" content="0; url=upk.php" />
-						</head>
-					</html>';
-			}
-			else
-			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Account ammendment failed!");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
 			}
 		}
 	?>
@@ -214,7 +147,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -248,23 +181,14 @@
 			</div>
             <!-- /.row -->
 			<?php
-				if(isset($_GET['EDIT']))
+				$EDIT_ROW = isset($_GET['EDIT']) && request_id($_GET, 'EDIT') !== null
+					? db_row("SELECT U_ID, U_NAME, U_PHONE FROM UPK WHERE U_ID = ?", [request_id($_GET, 'EDIT')]) : null;
+				if($EDIT_ROW)
 				{
-					$EDIT_ID	= $_GET['EDIT'];
-					
-					// create the query
-					$sql = "SELECT * FROM UPK WHERE U_ID = '$EDIT_ID'";
-					
-					// execute query
-					$result = mysql_query($sql) or die("SQL select statement failed");
-					
-					// iterate through all rows in result set
-					$row = mysql_fetch_array($result);
-					
 					// extract specific fields
-					$U_ID		= $row["U_ID"];
-					$U_NAME		= $row["U_NAME"];
-					$U_PHONE	= $row["U_PHONE"];
+					$U_ID		= $EDIT_ROW["U_ID"];
+					$U_NAME		= $EDIT_ROW["U_NAME"];
+					$U_PHONE	= $EDIT_ROW["U_PHONE"];
 			?>
 			<div class="row">
                 <div class="col-lg-12">
@@ -275,27 +199,28 @@
 						<!-- /.panel-heading -->
 						<div class="panel-body">
 							<form id="edit_upk" action ="upk.php" method ="POST">
-								<input type="hidden" name="ID2" value="<?php echo $U_ID; ?>">
+								<input type="hidden" name="ID2" value="<?php echo e($U_ID); ?>">
 								<input type="hidden" name="EDIT" value="YES">
 								<div class="form-group">
 									<label>Staff ID</label>
-									<input class="form-control" type="text" maxlength="10" name="U_ID" value="<?php echo $U_ID; ?>">
+									<input class="form-control" type="text" maxlength="10" name="U_ID" value="<?php echo e($U_ID); ?>">
 								</div>
 								<div class="form-group">
 									<label>Staff Name</label>
-									<input class="form-control" type="text" maxlength="100" name="U_NAME" value="<?php echo $U_NAME; ?>">
+									<input class="form-control" type="text" maxlength="100" name="U_NAME" value="<?php echo e($U_NAME); ?>">
 								</div>
 								<div class="form-group">
 									<label>Password</label>
-									<input class="form-control" type="password" maxlength="50" name="U_PWD1" value="<?php echo hash('sha256', "my_old_password"); ?>">
+									<input class="form-control" type="password" name="U_PWD1" autocomplete="new-password">
+									<p class="help-block">Leave both password fields empty to keep the current password.</p>
 								</div>
 								<div class="form-group">
 									<label>Please Re-type Password</label>
-									<input class="form-control" type="password" maxlength="50" name="U_PWD2" value="<?php echo hash('sha256', "my_old_password"); ?>">
+									<input class="form-control" type="password" name="U_PWD2" autocomplete="new-password">
 								</div>
 								<div class="form-group">
 									<label>Staff Phone Number</label>
-									<input class="form-control" type="text" maxlength="100" name="U_PHONE" value="<?php echo $U_PHONE; ?>">
+									<input class="form-control" type="text" maxlength="100" name="U_PHONE" value="<?php echo e($U_PHONE); ?>">
 								</div>
 								<div class="form-group" align="center">
 									<button class="btn btn-outline btn-success" type="submit" form="edit_upk" value="Submit">Submit</button>
@@ -336,11 +261,11 @@
 								</div>
 								<div class="form-group">
 									<label>Password</label>
-									<input class="form-control" type="password" maxlength="50" name="U_PWD1">
+									<input class="form-control" type="password" name="U_PWD1" autocomplete="new-password">
 								</div>
 								<div class="form-group">
 									<label>Please Re-type Password</label>
-									<input class="form-control" type="password" maxlength="50" name="U_PWD2">
+									<input class="form-control" type="password" name="U_PWD2" autocomplete="new-password">
 								</div>
 								<div class="form-group">
 									<label>Staff Phone Number</label>
@@ -392,26 +317,24 @@
 								</thead>
 								<tbody>
 								<?php
-									// create the listing query
-									$sql = "SELECT * FROM UPK WHERE U_ID != 12345 ORDER BY U_NAME";
-									
-									// execute listing query
-									$result = mysql_query($sql) or die("SQL select statement failed");
+									// execute listing query (12345 is the built-in account, not listed)
+									$result = db_query("SELECT U_ID, U_NAME, U_PHONE FROM UPK WHERE U_ID != 12345 ORDER BY U_NAME") or die("SQL select statement failed");
 
 									// Papar table		
 									$BIL = 0;
-									while ($row = mysql_fetch_array($result))
+									while ($row = mysqli_fetch_array($result))
 									{
 										$BIL++;
 										
 										// extract specific fields
-										$U_ID		= $row["U_ID"];
-										$U_NAMA		= $row["U_NAME"];
-										$U_PHONE	= $row["U_PHONE"];
+										$U_ID		= e($row["U_ID"]);
+										$U_NAMA		= e($row["U_NAME"]);
+										$U_PHONE	= e($row["U_PHONE"]);
+										$U_JS		= e(js((string) $row["U_ID"]));
 										
 										// output student information
 										echo "<tr>";
-										echo "<td align=center>$U_ID</td><td>$U_NAMA</td><td align=center>$U_PHONE</td><td align=center><a href='upk.php?EDIT=$U_ID'><button class='btn btn-outline btn-warning' type='button' value='Edit'>Edit</button></a> <button class='btn btn-outline btn-danger' type='button' value='Delete' onClick='confirmDel(\"$U_ID\")'>Delete</button></td>";
+										echo "<td align=center>$U_ID</td><td>$U_NAMA</td><td align=center>$U_PHONE</td><td align=center><a href='upk.php?EDIT=$U_ID'><button class='btn btn-outline btn-warning' type='button' value='Edit'>Edit</button></a> <button class='btn btn-outline btn-danger' type='button' value='Delete' onClick='confirmDel($U_JS)'>Delete</button></td>";
 										echo "</tr>";
 									}
 									if($BIL == 0)
@@ -458,7 +381,8 @@
 			var del = confirm("Do you want to delete this staff?");
 			if (del == true)
 			{
-				window.location.assign("upk.php?DEL=" + nums);
+				window.location.assign("upk.php?DEL=" + encodeURIComponent(nums));
+
 			} else 
 			{
 				alert("Staff was not deleted.");

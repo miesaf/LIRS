@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,67 +10,44 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "USER")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('USER');
 		
 		if(isset($_POST["REG"]))
 		{
-			// Variables from pendaftaran.php
-			$T_ID		= $_SESSION["IDENT"];
-			$S_ID		= mysql_real_escape_string($_POST['S_ID']);
-			$S_NAME		= mysql_real_escape_string($_POST['S_NAME']);
-			$S_IC		= mysql_real_escape_string($_POST['S_IC']);
-			$S_PROG		= mysql_real_escape_string($_POST['S_PROG']);
-			$S_PART		= mysql_real_escape_string($_POST['S_PART']);
-			$S_PHONE	= mysql_real_escape_string($_POST['S_PHONE']);
-			$S_MAIL		= mysql_real_escape_string($_POST['S_MAIL']);
+			// A student changes only their own record (the ID in the session).
+			$T_ID		= $_SESSION['lirs_ident'];
+			$S_ID		= request_id($_POST, 'S_ID');
+			$S_NAME		= request_text($_POST, 'S_NAME') ?? '';
+			$S_IC		= request_text($_POST, 'S_IC') ?? '';
+			$S_PROG		= request_text($_POST, 'S_PROG') ?? '';
+			$S_PART		= request_text($_POST, 'S_PART') ?? '';
+			$S_PHONE	= request_text($_POST, 'S_PHONE') ?? '';
+			$S_MAIL		= request_text($_POST, 'S_MAIL') ?? '';
 			
-			//SQL query command
-			$sql="UPDATE STUDENT SET S_ID = $S_ID, S_NAME = \"$S_NAME\", S_IC = \"$S_IC\", S_PROG = \"$S_PROG\", S_PART = \"$S_PART\", S_PHONE = \"$S_PHONE\", S_MAIL = \"$S_MAIL\" WHERE S_ID = $T_ID";
+			$exe_sql = $S_ID !== null && $S_NAME !== '' && $S_IC !== ''
+				&& db_query("UPDATE STUDENT SET S_ID = ?, S_NAME = ?, S_IC = ?, S_PROG = ?, S_PART = ?, S_PHONE = ?, S_MAIL = ? WHERE S_ID = ?",
+					[$S_ID, $S_NAME, $S_IC, $S_PROG, $S_PART, $S_PHONE, $S_MAIL, $T_ID]);
 			
-			// execute query
-			$exe_sql = mysql_query($sql);
-			
-			// confirming the record is added
+			// confirming the record is saved
 			if ($exe_sql)
 			{
-				$_SESSION['IDENT']	= $S_ID;
-				$_SESSION['NAME']	= $S_NAME;
+				$_SESSION['lirs_ident']	= (string) $S_ID;
+				$_SESSION['lirs_name']	= $S_NAME;
 				
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Edition successfull!\nRecord was saved into the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=main.php" />
-						</head>
-					</html>';
+				js_alert("Edition successfull!\nRecord was saved into the database.", "main.php");
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Edition failed!\nRecord was not saved into the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Edition failed!\nRecord was not saved into the database.");
 			}
 		}
 		
 		if(!isset($_POST["REG"]))
 		{
-			$TEMP_ID	= $_SESSION["IDENT"];
-			$sql_choose = "SELECT * FROM STUDENT WHERE S_ID = $TEMP_ID";
-			$result_choose = mysql_query($sql_choose);
-			while ($row = mysql_fetch_array($result_choose))
+			$S_ID = $S_NAME = $S_IC = $S_PROG = $S_PART = $S_PHONE = $S_MAIL = '';
+			$row = db_row("SELECT * FROM STUDENT WHERE S_ID = ?", [$_SESSION['lirs_ident']]);
+			if ($row)
 			{
 				$S_ID 		= $row["S_ID"];
 				$S_NAME 	= $row["S_NAME"];
@@ -125,7 +103,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -174,18 +152,18 @@
                                 <div class="col-lg-6">
                                     <form role="form" id="update_stud" action ="update_stud.php" method ="POST">
 										<input type="hidden" name="REG" value="YES">
-										<input type="hidden" name="T_ID" value="<?php print($S_ID); ?>">
+										<input type="hidden" name="T_ID" value="<?php echo e($S_ID); ?>">
                                         <div class="form-group">
 											<label>Student ID</label>
-                                            <input class="form-control" type="text" size="12" maxlength="10" name="S_ID" value="<?php print($S_ID); ?>">
+                                            <input class="form-control" type="text" size="12" maxlength="10" name="S_ID" value="<?php echo e($S_ID); ?>">
                                         </div>
 										<div class="form-group">
 											<label>Student Name</label>
-                                            <input class="form-control" type="text" size="50" maxlength="100" name="S_NAME" value="<?php print($S_NAME); ?>">
+                                            <input class="form-control" type="text" size="50" maxlength="100" name="S_NAME" value="<?php echo e($S_NAME); ?>">
                                         </div>
 										<div class="form-group">
 											<label>Student IC</label>
-                                            <input class="form-control" type="text" size="12" maxlength="12" name="S_IC" value="<?php print($S_IC); ?>">
+                                            <input class="form-control" type="text" size="12" maxlength="12" name="S_IC" value="<?php echo e($S_IC); ?>">
                                             <p class="help-block">Eg: 95xxxxxxxxxx (Without dash '-')</p>
                                         </div>
 										<div class="form-group">
@@ -194,9 +172,8 @@
 												<option disabled> Please choose </option>
 												<option disabled> </option>
 												<?php
-													$sql_choose = "SELECT * FROM PROGRAMME ORDER BY ID_PROG";
-													$result_choose = mysql_query($sql_choose);
-													while ($row = mysql_fetch_array($result_choose))
+													$result_choose = db_query("SELECT * FROM PROGRAMME ORDER BY ID_PROG");
+													while ($row = mysqli_fetch_array($result_choose))
 													{
 														$PROG1 = $row["ID_PROG"];
 														$PROG2 = $row["PROG"];
@@ -205,7 +182,7 @@
 														if($PROG1 == $S_PROG)
 														{	$SEL = " selected";	}
 														
-														echo '<option value="' . $PROG1 . '"' . $SEL . '> ' . $PROG1 . ' - ' . $PROG2 . '</option>';
+														echo '<option value="' . e($PROG1) . '"' . $SEL . '> ' . e($PROG1 . ' - ' . $PROG2) . '</option>';
 													}
 												?>
 											</select>
@@ -215,16 +192,16 @@
 								<div class="col-lg-6">
 										<div class="form-group">
 											<label>Part/Semester</label>
-											<input class="form-control" type="text" size="12" maxlength="2" name="S_PART" value="<?php print($S_PART); ?>">
+											<input class="form-control" type="text" size="12" maxlength="2" name="S_PART" value="<?php echo e($S_PART); ?>">
 										</div>
 										<div class="form-group">
 											<label>Phone Number</label>
-											<input class="form-control" type="text" size="12" maxlength="20" name="S_PHONE" value="<?php print($S_PHONE); ?>">
+											<input class="form-control" type="text" size="12" maxlength="20" name="S_PHONE" value="<?php echo e($S_PHONE); ?>">
 											<p class="help-block">Eg: +6012-xxx xxxx</p>
 										</div>
 										<div class="form-group">
 											<label>E-Mail</label>
-											<input class="form-control" type="text" size="30" maxlength="50" name="S_MAIL" value="<?php print($S_MAIL); ?>">
+											<input class="form-control" type="text" size="30" maxlength="50" name="S_MAIL" value="<?php echo e($S_MAIL); ?>">
 											<p class="help-block">Eg: yourname@gmail.com</p>
 										</div>
 								</div>
@@ -235,7 +212,8 @@
 								<br />
 								<button type="submit" class="btn btn-outline btn-success" form="update_stud" value="Submit">Submit</button>
 								<button type="reset" class="btn btn-outline btn-warning"form="update_stud" value="Reset">Reset</button>
-								<a href="view_stud.php?ID=<?php print($S_ID); ?>"><button type="button" class="btn btn-outline btn-danger" >Cancel</button></a>
+								<a href="main.php"><button type="button" class="btn btn-outline btn-danger" >Cancel</button></a>
+
 								<br /><br />
 							</div>
 							<!-- /.row -->

@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html>
 <head>
 	<?php
@@ -6,27 +7,22 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Johor's Commander Intergrated System" />
-    <meta name="author" content="PRISKOR">
+    <meta name="description" content="Ledang Inn Reservation System" />
 
     <title>[LIRS] - Ledang Inn Reservation System</title>
 	<link rel="shortcut icon" href="favicon.ico">
 	
 	<?php			
-		if(isset($_SESSION['LOGIN']))
+		if(!empty($_SESSION['lirs_login']))
 		{
 			header("Location: main.php");
 			exit;
 		}
 		
-		// Clear reset
-		include('connectDB.php');
-		
-		$problem = ""; // 2) Declare
-		// $problem = $_GET["problem"];	// 1) Undefined index error
-		if(isset($_GET["error"]))	// 3) The magic function
+		$problem = isset($_GET["error"]) && is_string($_GET["error"]) ? $_GET["error"] : "";
+		if(!in_array($problem, ["failed", "type", "exp", "server", "db"], true))
 		{
-			$problem = $_GET["error"];
+			$problem = "";
 		}
 		$errormsg = "<font color='red'> ERROR: ";
 		if($problem == "failed")

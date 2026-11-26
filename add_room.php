@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,51 +10,27 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		if(isset($_POST["REG"]))
 		{
-			// Variables from pendaftaran.php
-			$R_ID		= mysql_real_escape_string($_POST['R_ID']);
-			$R_TYPE		= mysql_real_escape_string($_POST['R_TYPE']);
-			$R_HOUSE	= mysql_real_escape_string($_POST['R_HOUSE']);
-			$R_STAT		= mysql_real_escape_string($_POST['R_STAT']);
+			$R_ID		= request_text($_POST, 'R_ID') ?? '';
+			$R_TYPE		= request_text($_POST, 'R_TYPE') ?? '';
+			$R_HOUSE	= request_text($_POST, 'R_HOUSE') ?? '';
+			$R_STAT		= request_text($_POST, 'R_STAT');
 			
-			//SQL query command
-			$sql="INSERT INTO ROOM (R_ID, R_TYPE, R_HOUSE, R_STAT) VALUES ('$R_ID', '$R_TYPE', '$R_HOUSE', $R_STAT)";
-			
-			// execute query
-			$exe_sql = mysql_query($sql);
+			$exe_sql = $R_ID !== '' && isset(LIRS_ROOM_TYPES[$R_TYPE]) && in_array($R_STAT, ["0", "1"], true)
+				&& db_query("INSERT INTO ROOM (R_ID, R_TYPE, R_HOUSE, R_STAT) VALUES (?, ?, ?, ?)", [$R_ID, $R_TYPE, $R_HOUSE, (int) $R_STAT]);
 			
 			// confirming the record is added
 			if ($exe_sql)
 			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Registration successfull!\nRecord was saved into the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=list_room.php" />
-						</head>
-					</html>';
+				js_alert("Registration successfull!\nRecord was saved into the database.", "list_room.php");
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Registration failed!\nRecord was not saved into the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Registration failed!\nRecord was not saved into the database.");
 			}
 		}
 	?>
@@ -101,7 +78,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -170,14 +147,14 @@
 												<option disabled selected> Please choose </option>
 												<option disabled> </option>
 												<?php
-													$sql_choose = "SELECT * FROM HOUSE ORDER BY H_NAME";
-													$result_choose = mysql_query($sql_choose);
-													while ($row = mysql_fetch_array($result_choose))
+													$result_choose = db_query("SELECT * FROM HOUSE ORDER BY H_NAME");
+													while ($row = mysqli_fetch_array($result_choose))
 													{
 														$H1 = $row["H_ID"];
 														$H2 = $row["H_NAME"];
-														echo '<option value="' . $H1 . '"> ' . $H2 . '</option>';
+														echo '<option value="' . e($H1) . '"> ' . e($H2) . '</option>';
 													}
+
 												?>
 											</select>
                                         </div>

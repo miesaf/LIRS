@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,47 +10,21 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		if(isset($_GET["DEL"]))
 		{
-			$DEL_ID	= $_GET["DEL"];
+			$DEL_ID	= request_text($_GET, "DEL") ?? '';
 			
-			//SQL query command
-			$sql="DELETE FROM ROOM WHERE R_ID = '$DEL_ID'";
-			
-			// execute query
-			$exe_sql = mysql_query($sql);
-			
-			// confirming the record is added
-			if ($exe_sql)
+			// A room that has reservations is not deleted (foreign key).
+			if (db_query("DELETE FROM ROOM WHERE R_ID = ?", [$DEL_ID]) && db_affected() === 1)
 			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Room was removed from the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=list_room.php" />
-						</head>
-					</html>';
+				js_alert("Room was removed from the database.", "list_room.php");
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Failed to remove room from the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Failed to remove room from the database.", "list_room.php");
 			}
 		}
 	?>
@@ -103,7 +78,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -159,28 +134,17 @@
                                     <tbody>
                         <?php                            
 							$BIL = 1;
-							$sql_choose = "SELECT * FROM ROOM ORDER BY R_HOUSE, R_ID";
-							$result_choose = mysql_query($sql_choose);
-							while ($row = mysql_fetch_array($result_choose))
+							$result_choose = db_query("SELECT ROOM.*, HOUSE.H_NAME FROM ROOM LEFT JOIN HOUSE ON HOUSE.H_ID = ROOM.R_HOUSE ORDER BY R_HOUSE, R_ID");
+							while ($row = mysqli_fetch_array($result_choose))
 							{
-								$R_ID 		= $row["R_ID"];
-								$R_TYPE 	= $row["R_TYPE"];
-								$R_HOUSE	= $row["R_HOUSE"];
+								$R_ID 		= e($row["R_ID"]);
+								$R_URL		= e(rawurlencode($row["R_ID"]));
+								$R_JS		= e(js($row["R_ID"]));
+								$R_TYPE 	= e(LIRS_ROOM_TYPES[$row["R_TYPE"]] ?? $row["R_TYPE"]);
+								$DHOUSE		= e($row["H_NAME"]);
 								$R_STAT 	= $row["R_STAT"];
 								
-								// Decode codes into string
-								if($R_TYPE == "TS")
-								{	$R_TYPE = "Two Single Bed";	}
-								elseif($R_TYPE == "QB")
-								{	$R_TYPE = "One Queen Bed";	}
-								elseif($R_TYPE == "KB")
-								{	$R_TYPE = "One King Bed";	}
-								
-								$sql_display = "SELECT H_NAME FROM HOUSE WHERE H_ID = '$R_HOUSE'";
-								$result_dispay = mysql_query($sql_display);
-								while($row = mysql_fetch_array($result_dispay)) { $DHOUSE = $row["H_NAME"]; }
-								
-								if($R_STAT == true)
+								if($R_STAT == 1)
 								{	$R_STAT = "Available";	}
 								else
 								{	$R_STAT = "Not Available";	}
@@ -192,7 +156,7 @@
 										<td align=\"center\">$R_TYPE</td>\n\t\t\t\t\t\t\t
 										<td align=\"center\">$DHOUSE</td>\n\t\t\t\t\t\t\t
 										<td align=\"center\">$R_STAT</td>\n\t\t\t\t\t\t\t";
-								echo "<td align=\"center\"> <a href=\"edit_room.php?ID=$R_ID\"><button type=\"button\"  class=\"btn btn-outline btn-warning\">Edit</button></a> <button type=\"button\"  class=\"btn btn-outline btn-danger\" value=\"Delete\" onClick='confirmDel(\"$R_ID\")'>Delete</button> </td>\n\t\t\t\t\t\t\t";
+								echo "<td align=\"center\"> <a href=\"edit_room.php?ID=$R_URL\"><button type=\"button\"  class=\"btn btn-outline btn-warning\">Edit</button></a> <button type=\"button\"  class=\"btn btn-outline btn-danger\" value=\"Delete\" onClick='confirmDel($R_JS)'>Delete</button> </td>\n\t\t\t\t\t\t\t";
 								echo "</tr>\n\t\t\t\t\t\t";
 								
 								$BIL++;
@@ -247,7 +211,8 @@
 			var del = confirm("Do you want to delete this room?");
 			if (del == true)
 			{
-				window.location.assign("list_room.php?DEL=" + nums);
+				window.location.assign("list_room.php?DEL=" + encodeURIComponent(nums));
+
 			} else 
 			{
 				alert("Room was not deleted.");

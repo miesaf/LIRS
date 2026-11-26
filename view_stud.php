@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 <head>
 	<link rel="shortcut icon" href="favicon.ico">
@@ -8,47 +9,21 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		if(isset($_GET["DEL"]))
 		{
-			$DEL_ID	= $_GET["DEL"];
+			$DEL_ID	= request_id($_GET, "DEL");
 			
-			//SQL query command
-			$sql="DELETE FROM STUDENT WHERE S_ID = $DEL_ID";
-			
-			// execute query
-			$exe_sql = mysql_query($sql);
-			
-			// confirming the record is added
-			if ($exe_sql)
+			// A student who has reservations is not deleted (foreign key).
+			if ($DEL_ID !== null && db_query("DELETE FROM STUDENT WHERE S_ID = ?", [$DEL_ID]) && db_affected() === 1)
 			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Record was removed from the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=view_stud.php?ID=' . $DEL_ID . '" />
-						</head>
-					</html>';
+				js_alert("Record was removed from the database.", "list_stud.php");
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Failed to remove record from the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Failed to remove record from the database.");
 			}
 		}
 	?>
@@ -94,7 +69,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -130,18 +105,11 @@
 			<div class="row">
 				<div class="col-lg-8">					
 				<?php
-					if(isset($_GET["ID"]) && ($_GET["ID"] != null))
+					$S_ID	= null;
+					$ID		= request_id($_GET, "ID");
+					$row	= $ID === null ? null : db_row("SELECT * FROM STUDENT WHERE S_ID = ?", [$ID]);
+					if($row)
 					{
-						// create the query
-						$ID	= $_GET["ID"];
-						$sql	= "SELECT * FROM STUDENT WHERE S_ID = $ID";
-						
-						// execute query
-						$result = mysql_query($sql) or die("SQL select statement failed");
-						
-						// iterate through all rows in result set
-						$row = mysql_fetch_array($result);
-					
 						// extract specific fields
 						$S_ID		= $row["S_ID"];
 						$S_NAME		= $row["S_NAME"];
@@ -151,13 +119,7 @@
 						$S_PHONE	= $row["S_PHONE"];
 						$S_MAIL		= $row["S_MAIL"];
 						
-						if(isset($S_ID))
-						{
-							$sql2		= "SELECT PROG FROM PROGRAMME WHERE ID_PROG = \"$S_PROG\"";
-							$result2	= mysql_query($sql2);
-							while($row2 = mysql_fetch_array($result2))
-							{	$DPROG = $row2["PROG"];	}
-						}
+						$DPROG		= db_row("SELECT PROG FROM PROGRAMME WHERE ID_PROG = ?", [$S_PROG])["PROG"] ?? '';
 					}
 				?>
 					<div class="panel panel-default">
@@ -169,40 +131,40 @@
 								<table class="table table-striped table-bordered table-hover">
 									<tbody>
 									<?php
-										if(isset($_GET["ID"]) && isset($S_ID))
+										if($S_ID !== null)
 										{
 											?>
 										<tr>
 										  <td valign="center" ><div align="center"><b>Student ID</b></div></td>
-										  <td valign="center" ><?php print($S_ID); ?></td>
+										  <td valign="center" ><?php echo e($S_ID); ?></td>
 										</tr>
 										<tr>
 										  <td valign="center" ><div align="center"><b>Student Name</b></div></td>
-										  <td valign="center" ><div align="left"><?php print($S_NAME); ?></div></td>
+										  <td valign="center" ><div align="left"><?php echo e($S_NAME); ?></div></td>
 										</tr>
 										<tr>
 										  <td valign="center"><div align="center"><b>Student IC</b></div></td>
-										  <td valign="center"><div align="left"><?php print($S_IC); ?></div></td>
+										  <td valign="center"><div align="left"><?php echo e($S_IC); ?></div></td>
 										</tr>
 										<tr>
 										  <td valign="center"><div align="center"><b>Programme</b></div></td>
-										  <td valign="center"><div align="left"><?php print($S_PROG . " - " . $DPROG); ?></div></td>
+										  <td valign="center"><div align="left"><?php echo e($S_PROG . " - " . $DPROG); ?></div></td>
 										</tr>
 										<tr>
 										  <td valign="center"><div align="center"><b>Part/Semester</b></div></td>
-										  <td valign="center"><div align="left"><?php print($S_PART); ?></div></td>
+										  <td valign="center"><div align="left"><?php echo e($S_PART); ?></div></td>
 										</tr>
 										<tr>
 										  <td valign="center"><div align="center"><b>Phone Number</b></div></td>
-										  <td valign="center"><div align="left"><?php print($S_PHONE); ?></div></td>
+										  <td valign="center"><div align="left"><?php echo e($S_PHONE); ?></div></td>
 										</tr>
 										<tr>
 										  <td valign="center"><div align="center"><b>E-Mail</b></div></td>
-										  <td valign="center"><div align="left"><?php print($S_MAIL); ?></div></td>
+										  <td valign="center"><div align="left"><?php echo e($S_MAIL); ?></div></td>
 										</tr>
 										<tr>
 											<td colspan="2" align="center">
-												<a href="edit_stud.php?ID=<?php print($S_ID); ?>"><button class="btn btn-outline btn-warning"> Edit </button></a>&nbsp;&nbsp;&nbsp;
+												<a href="edit_stud.php?ID=<?php echo e($S_ID); ?>"><button class="btn btn-outline btn-warning"> Edit </button></a>&nbsp;&nbsp;&nbsp;
 												<button type="button" class="btn btn-outline btn-danger" onClick='confirmDel()'> Delete </button>
 											</td>
 										</tr>
@@ -250,7 +212,8 @@
 			var del = confirm("Do you want to delete this record?");
 			if (del == true)
 			{
-				window.location.assign("view_stud.php?DEL=<?php print($S_ID); ?>");
+				window.location.assign("view_stud.php?DEL=" + encodeURIComponent(<?php echo js((string) $S_ID); ?>));
+
 			} else 
 			{
 				alert("Record was not deleted.");

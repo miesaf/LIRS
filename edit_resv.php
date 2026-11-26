@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -10,80 +11,71 @@
 	
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'])
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
+		require_once __DIR__ . '/connectDB.php';
+		require_login();
 		
-		include("connectDB.php");
+		// The reservation being edited: any for staff, only their own for a student.
+		function lirs_own_reservation(?int $id): ?array
+		{
+			if ($id === null)
+			{
+				return null;
+			}
+			if ($_SESSION['lirs_priv'] == "USER")
+			{
+				return db_row("SELECT * FROM RESERVE WHERE RV_ID = ? AND RV_STUD = ?", [$id, $_SESSION['lirs_ident']]);
+			}
+			return db_row("SELECT * FROM RESERVE WHERE RV_ID = ?", [$id]);
+		}
 		
 		if(isset($_POST["REG2"]))
 		{
-			// Variables from pendaftaran.php
-			$TRV_ID		= mysql_real_escape_string($_POST['TRV_ID']);
-			$RV_STUD	= mysql_real_escape_string($_POST['RV_STUD']);
-			$RV_IN		= mysql_real_escape_string($_POST['RV_IN']);
-			$RV_OUT		= mysql_real_escape_string($_POST['RV_OUT']);
-			$RV_ROOM	= mysql_real_escape_string($_POST['RV_ROOM']);
+			$TRV_ID		= request_id($_POST, 'TRV_ID');
+			$RV_STUD	= $_SESSION['lirs_priv'] == "USER" ? (int) $_SESSION['lirs_ident'] : request_id($_POST, 'RV_STUD');
+			$RV_IN		= request_date($_POST, 'RV_IN');
+			$RV_OUT		= request_date($_POST, 'RV_OUT');
+			$RV_ROOM	= request_text($_POST, 'RV_ROOM') ?? '';
 			
-			$h			= "8";	// to rematch time with Malaysian GMT +8 time (please truncate the +/- sign)
-			$hm			= $h * 60; 
-			$ms			= $hm * 60;
-			$NEW_DATE	= gmdate("Y-m-d H:i:s", time()+($ms));	// use (-) for -ve GMT and (+) for +ve GMT
-						/* 	-----------------------
-							Timestamp Configuration
-							-----------------------
-							Y - Full year
-							m - month with leading zero
-							d - date with leading zero
-							H - 24-hour format hour
-							i - minute with leading zero
-							s - second with leading zero
-							
-							# Please reconfigure server time to:
-							timezone - Asia/Kuala_Lumour
-							latitude = 3.133333
-							longitude = 101.683333
-							
-							#date() - will fetch server date
-							#gmdate() - will fetch GMT 0:00 date
-						*/
+			// Time of the (new) application, Malaysian time.
+			$NEW_DATE	= date("Y-m-d H:i:s");
 			
-			//SQL query command
-			$sql="UPDATE RESERVE SET RV_STUD = $RV_STUD, RV_IN = \"$RV_IN\", RV_OUT = \"$RV_OUT\", RV_ROOM = \"$RV_ROOM\", RV_DATE = \"$NEW_DATE\", RV_STAT = \"PG\" WHERE RV_ID = $TRV_ID";
-			
-			// execute query
-			$exe_sql = mysql_query($sql);
+			// The room is checked again, leaving out this reservation itself.
+			$exe_sql = lirs_own_reservation($TRV_ID) !== null && $RV_STUD !== null
+				&& $RV_IN !== null && $RV_OUT !== null && $RV_IN < $RV_OUT
+				&& lirs_room_free($RV_ROOM, $RV_IN, $RV_OUT, $TRV_ID)
+				&& db_query("UPDATE RESERVE SET RV_STUD = ?, RV_IN = ?, RV_OUT = ?, RV_ROOM = ?, RV_DATE = ?, RV_STAT = 'PG' WHERE RV_ID = ?",
+					[$RV_STUD, $RV_IN, $RV_OUT, $RV_ROOM, $NEW_DATE, $TRV_ID]);
 			
 			// confirming the record was edited
 			if ($exe_sql)
 			{
-				if($_SESSION["PRIV"] == "USER")
-				{	$ALT = "window.alert(\"Edition successfull!\nYour application must be re-verified if it was approved before editing.\");";	}
-				elseif($_SESSION["PRIV"] == "SUPK")
-				{	$ALT = "window.alert(\"Edition successfull!\Application must be re-verified if it was approved before editing.\");";	}
+				if($_SESSION['lirs_priv'] == "USER")
+				{	$ALT = "Edition successfull!\nYour application must be re-verified if it was approved before editing.";	}
+				else
+				{	$ALT = "Edition successfull!\nApplication must be re-verified if it was approved before editing.";	}
 				
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Edition successfull!\nRecord was saved into the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=view_resv.php?ID=' . $TRV_ID . '" />
-						</head>
-					</html>';
+				js_alert($ALT, "view_resv.php?ID=" . $TRV_ID);
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>" . mysql_error();
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Edition failed!\nRecord was not saved into the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Edition failed!\nRecord was not saved into the database.");
+			}
+		}
+		
+		// Step 1 -> step 2: the reservation must be found and the dates valid.
+		if(isset($_POST["REG"]) && !isset($_POST["REG2"]))
+		{
+			$TRV_ID		= request_id($_POST, 'TRV_ID');
+			$RV_STUD	= $_SESSION['lirs_priv'] == "USER" ? (int) $_SESSION['lirs_ident'] : request_id($_POST, 'RV_STUD');
+			$RV_IN		= request_date($_POST, 'RV_IN');
+			$RV_OUT		= request_date($_POST, 'RV_OUT');
+			$OLD		= lirs_own_reservation($TRV_ID);
+			$RV_ROOM2	= (string) ($OLD["RV_ROOM"] ?? '');
+			
+			if ($OLD === null || $RV_STUD === null || $RV_IN === null || $RV_OUT === null || $RV_IN >= $RV_OUT)
+			{
+				js_alert("Please choose a check-out date after the check-in date.");
+				exit;
 			}
 		}
 	?>
@@ -131,7 +123,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -171,9 +163,23 @@
                             <b>Reservation Amendment Form</b>
                         </div>
 					<?php
-						if(!isset($_POST['REG']) && !isset($_POST['REG2']))
+						$E_ID	= request_id($_GET, "ID");
+						$E_ROW	= (!isset($_POST['REG']) && !isset($_POST['REG2'])) ? lirs_own_reservation($E_ID) : null;
+						if(!isset($_POST['REG']) && !isset($_POST['REG2']) && $E_ROW === null)
 						{
-							$E_ID	=	$_GET["ID"];
+							?>
+                        <div class="panel-body">
+							<center><i>No data to display</i></center>
+						</div>
+							<?php
+						}
+						elseif(!isset($_POST['REG']) && !isset($_POST['REG2']))
+						{
+							$TRV_ID		= $E_ROW["RV_ID"];
+							$RV_STUD	= $E_ROW["RV_STUD"];
+							$RV_IN		= $E_ROW["RV_IN"];
+							$RV_OUT		= $E_ROW["RV_OUT"];
+							$RV_ROOM	= $E_ROW["RV_ROOM"];
 							?>
 						<html>
 							<head>
@@ -187,31 +193,16 @@
                                 <div class="col-lg-12">
                                     <form role="form" id="edit_resv" action ="edit_resv.php" method ="POST">
 										<input type="hidden" name="REG" value="YES">
-										<input type="hidden" name="TRV_ID" value="<?php print($E_ID); ?>">
+										<input type="hidden" name="TRV_ID" value="<?php echo e($TRV_ID); ?>">
 										<div class="form-group">
 											<label>Reservation ID</label>
-                                            <input class="form-control" type="text" value="<?php print($E_ID); ?>" name="ga" disabled>
+                                            <input class="form-control" type="text" value="<?php echo e($TRV_ID); ?>" name="ga" disabled>
                                         </div>
                                         <div class="form-group">
 											<label>Student ID</label>
 											<?php
-												if($_SESSION["PRIV"] == "SUPK")
+												if($_SESSION['lirs_priv'] == "SUPK")
 												{
-													// create the query
-													$sql	= "SELECT * FROM RESERVE WHERE RV_ID = \"$E_ID\"";
-													
-													// execute query
-													$result = mysql_query($sql) or die("SQL select statement failed");
-													
-													// iterate through all rows in result set
-													$row = mysql_fetch_array($result);
-													
-													$TRV_ID		= $row["RV_ID"];
-													$RV_STUD	= $row["RV_STUD"];
-													$RV_IN		= $row["RV_IN"];
-													$RV_OUT		= $row["RV_OUT"];
-													$RV_ROOM	= $row["RV_ROOM"];
-													
 													?>
                                             <select class="form-control" name="RV_STUD">
 												<option disabled> Please choose </option>
@@ -220,9 +211,8 @@
 														$T_PROG		= null;
 														$T2_PROG	= null;
 														
-														$sql_choose = "SELECT S_ID, S_NAME, S_PROG FROM STUDENT ORDER BY S_PROG, S_NAME";
-														$result_choose = mysql_query($sql_choose);
-														while ($row = mysql_fetch_array($result_choose))
+														$result_choose = db_query("SELECT S_ID, S_NAME, S_PROG FROM STUDENT ORDER BY S_PROG, S_NAME");
+														while ($row = mysqli_fetch_array($result_choose))
 														{
 															
 															$S_ID 	= $row["S_ID"];
@@ -235,7 +225,7 @@
 																{
 																	echo "</optgroup>";
 																}
-																echo "<optgroup label=\"$S_PROG\">";
+																echo "<optgroup label=\"" . e($S_PROG) . "\">";
 																$T_PROG 	= $S_PROG;
 																$T2_PROG	= $S_PROG;
 															}
@@ -246,43 +236,33 @@
 																$SEL_ID	= "selected";
 															}
 															
-															echo '<option value="' . $S_ID . '" ' . $SEL_ID . '> ' . $S_ID . ' - ' . $S_NAME . '</option>';
+															echo '<option value="' . e($S_ID) . '" ' . $SEL_ID . '> ' . e($S_ID . ' - ' . $S_NAME) . '</option>';
+														}
+														if($T_PROG !== null)
+														{
+															echo "</optgroup>";
 														}
 													?>
 											</select>
 											<?php
 												}
-												elseif($_SESSION["PRIV"] == "USER")
+												elseif($_SESSION['lirs_priv'] == "USER")
 												{
-													$T_ID		= $_SESSION["IDENT"];
-													$T_NAME		= $_SESSION["NAME"];
-													
-													// create the query
-													$sql	= "SELECT RV_ID, RV_IN, RV_OUT, RV_ROOM FROM RESERVE WHERE RV_ID = \"$E_ID\" AND RV_STUD = $T_ID";
-													
-													// execute query
-													$result = mysql_query($sql) or die("SQL select statement failed");
-													
-													// iterate through all rows in result set
-													$row = mysql_fetch_array($result);
-													
-													$TRV_ID		= $row["RV_ID"];
-													$RV_IN		= $row["RV_IN"];
-													$RV_OUT		= $row["RV_OUT"];
-													$RV_ROOM	= $row["RV_ROOM"];
+													$T_ID		= e($_SESSION['lirs_ident']);
+													$T_NAME		= e($_SESSION['lirs_name']);
 													
 													echo "<input class=\"form-control\" type=\"hidden\" name=\"RV_STUD\" value=\"$T_ID\"><input class=\"form-control\" type=\"text\" name=\"D_ID\" value=\"$T_ID - $T_NAME\" disabled>";
 												}
 												?>
-											<input class="form-control" type="hidden" name="RV_ROOM" value="<?php print($RV_ROOM); ?>">
+											<input class="form-control" type="hidden" name="RV_ROOM" value="<?php echo e($RV_ROOM); ?>">
                                         </div>
 										<div class="form-group">
 											<label>Check-In Date</label>
-                                            <input class="form-control" type="date" min="2000-01-02" name="RV_IN" value="<?php print($RV_IN); ?>">
+                                            <input class="form-control" type="date" min="2000-01-02" name="RV_IN" value="<?php echo e($RV_IN); ?>">
                                         </div>
 										<div class="form-group">
 											<label>Check-Out Date</label>
-                                            <input class="form-control" type="date" min="2000-01-02" name="RV_OUT" value="<?php print($RV_OUT); ?>">
+                                            <input class="form-control" type="date" min="2000-01-02" name="RV_OUT" value="<?php echo e($RV_OUT); ?>">
                                         </div>
 								</div>
 								<!-- /.col-lg-12 -->
@@ -304,54 +284,33 @@
 						
 						if(isset($_POST["REG"]))
 						{
-							$TRV_ID		= $_POST["TRV_ID"];
-							$RV_STUD	= $_POST["RV_STUD"];
-							$RV_IN		= $_POST["RV_IN"];
-							$RV_OUT		= $_POST["RV_OUT"];
-							$RV_ROOM2	= $_POST["RV_ROOM"];
-							
-							$sql1		= "SELECT R_ID FROM ROOM";
-							$result1	= mysql_query($sql1);
-							while($row1 = mysql_fetch_array($result1))
-							{
-								$R_ID		= $row1["R_ID"];
-								$AR[$R_ID]	= true;
-							}
-							
-							$sql2		= "SELECT RV_ROOM FROM RESERVE WHERE RV_IN < \"$RV_OUT\" AND RV_OUT > \"$RV_IN\" AND RV_STAT != \"DY\" GROUP BY RV_ROOM";
-							$result2	= mysql_query($sql2);
-							while($row2 = mysql_fetch_array($result2))
-							{
-								$RV_ROOM		= $row2["RV_ROOM"];
-								$AR[$RV_ROOM]	= false;
-							}
-							
-							
+							// rooms taken for these dates by other reservations
+							$BUSY = lirs_busy_rooms($RV_IN, $RV_OUT, $TRV_ID);
 							?>
 						<div class="panel-body">
 							<div class="row">
 								<div class="col-lg-12">
 									<form role="form" id="edit_resv2" action ="edit_resv.php" method ="POST">
 										<input type="hidden" name="REG2" value="YES">
-										<input type="hidden" name="TRV_ID" value="<?php print($TRV_ID); ?>">
-										<input type="hidden" name="RV_STUD" value="<?php print($RV_STUD); ?>">
-										<input type="hidden" name="RV_IN" value="<?php print($RV_IN); ?>">
-										<input type="hidden" name="RV_OUT" value="<?php print($RV_OUT); ?>">
+										<input type="hidden" name="TRV_ID" value="<?php echo e($TRV_ID); ?>">
+										<input type="hidden" name="RV_STUD" value="<?php echo e($RV_STUD); ?>">
+										<input type="hidden" name="RV_IN" value="<?php echo e($RV_IN); ?>">
+										<input type="hidden" name="RV_OUT" value="<?php echo e($RV_OUT); ?>">
 										<div class="form-group">
 											<label>Reservation ID</label>
-                                            <input class="form-control" type="text" value="<?php print($TRV_ID); ?>" name="a" disabled>
+                                            <input class="form-control" type="text" value="<?php echo e($TRV_ID); ?>" name="a" disabled>
                                         </div>
 										<div class="form-group">
 											<label>Student ID</label>
-                                            <input class="form-control" type="text" value="<?php print($RV_STUD); ?>" name="a" disabled>
+                                            <input class="form-control" type="text" value="<?php echo e($RV_STUD); ?>" name="a" disabled>
                                         </div>
 										<div class="form-group">
 											<label>Check-In Date</label>
-                                            <input class="form-control" type="date" value="<?php print($RV_IN); ?>" name="b" disabled>
+                                            <input class="form-control" type="date" value="<?php echo e($RV_IN); ?>" name="b" disabled>
                                         </div>
 										<div class="form-group">
 											<label>Check-Out Date</label>
-                                            <input class="form-control" type="date" value="<?php print($RV_OUT); ?>" name="c" disabled>
+                                            <input class="form-control" type="date" value="<?php echo e($RV_OUT); ?>" name="c" disabled>
                                         </div>
 										<div class="form-group">
 											<label>Room</label>
@@ -359,26 +318,19 @@
 												<option disabled> Please choose </option>
 												<option disabled> </option>
 												<?php
-													// Display room type
-													$DTYPE["TS"]	= "Two Single Bed";
-													$DTYPE["QB"]	= "One Queen Bed";
-													$DTYPE["KB"]	= "One King Bed";
-													
-													$sql_h		= "SELECT * FROM HOUSE ORDER BY H_NAME";
-													$result_h	= mysql_query($sql_h);
+													$result_h	= db_query("SELECT * FROM HOUSE ORDER BY H_NAME");
 													
 													$ind	= 0;
-													while ($row_h = mysql_fetch_array($result_h))
+													while ($row_h = mysqli_fetch_array($result_h))
 													{
 														
 														$H_ID 	= $row_h["H_ID"];
 														$H_NAME = $row_h["H_NAME"];
 														
-														echo "<optgroup label=\"$H_NAME\">";
+														echo "<optgroup label=\"" . e($H_NAME) . "\">";
 														
-														$sql_r		= "SELECT R_ID, R_TYPE FROM ROOM WHERE R_STAT = TRUE AND R_HOUSE = \"$H_ID\" ORDER BY R_TYPE";
-														$result_r	= mysql_query($sql_r);
-														while ($row_r = mysql_fetch_array($result_r))
+														$result_r	= db_query("SELECT R_ID, R_TYPE FROM ROOM WHERE R_STAT = TRUE AND R_HOUSE = ? ORDER BY R_TYPE", [$H_ID]);
+														while ($row_r = mysqli_fetch_array($result_r))
 														{
 															$R_ID		= $row_r["R_ID"];
 															$R_TYPE		= $row_r["R_TYPE"];
@@ -387,9 +339,9 @@
 															if($R_ID == $RV_ROOM2)
 															{	$SEL_R = "selected";	}
 															
-															if(($AR[$R_ID] == true) || ($R_ID == $RV_ROOM2))
+															if(!isset($BUSY[$R_ID]))
 															{
-																echo '<option value="' . $R_ID . '" ' . $SEL_R . '> ' . $R_ID . ' - ' . $DTYPE[$R_TYPE] . '</option>';
+																echo '<option value="' . e($R_ID) . '" ' . $SEL_R . '> ' . e($R_ID . ' - ' . (LIRS_ROOM_TYPES[$R_TYPE] ?? $R_TYPE)) . '</option>';
 																$ind++;
 															}
 														}
@@ -411,7 +363,8 @@
 							<div class="row" align="center">
 								<br />
 								<button type="submit" class="btn btn-outline btn-success" form="edit_resv2" value="Submit">Submit</button>
-								<button class="btn btn-outline btn-warning" onclick="goBack()">Go Back</button>
+								<button type="button" class="btn btn-outline btn-warning" onclick="goBack()">Go Back</button>
+
 								<button type="button" class="btn btn-outline btn-danger" onclick="javascript:window.close()">Cancel</button>
 								<br /><br />
 							</div>
