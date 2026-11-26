@@ -11,8 +11,8 @@ UiTM Johor (Segamat) guest house; UPK staff manage houses, rooms, students and s
 **Archived project** in the owner's project archive (https://app.dimensikini.xyz/LIRS/).
 
 - History: written in 2016 with `mysql_*` (the `old/` drafts, removed in the port), moved to mysqli in Feb 2021 for
-  PHP 7.4, ported to PHP 8.5 on 2026-11-26 (ClickUp `86d4e29px`, under `86d4e29pu`). The folder alone runs on PHP 8.5
-  through its own `.htaccess` (`SetHandler application/x-lsphp85`).
+  PHP 7.4, ported to PHP 8.5 on 2026-11-26 (ClickUp `86d4e29px`, under `86d4e29pu`). Its own `.htaccess` pins PHP 8.5
+  (`SetHandler application/x-lsphp85`); keep the pin even though the whole archive site defaults to PHP 8.5 since 2026-11-27.
 
 ## Data
 
@@ -45,10 +45,18 @@ and `php tools/hash-passwords.php`, add staff with `tools/add-staff.php`, then
 `php -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:8131 -t .`. The built-in server ignores `.htaccess`, so
 check the deny rules on the real host.
 
+## Status (2026-11-27)
+
+- Deployed on 2026-11-26 (PR #1, PHP 8.5.13); `old/`, `error_log` and the root `.sql` files were deleted on the
+  server then. ClickUp `86d4e29px` is complete.
+- The 2 UPK staff accounts whose passwords were in the public repo were locked with random hashes (owner's OK).
+  Open: the owner resets the ones still needed with `tools/add-staff.php`. Old passwords stay in git history.
+- The archive's root `.htaccess` (not in this repo) also refuses `..` requests and serves no `connectDB.php`, `config.json`,
+  `*.sql`, `*.log`, `*.md`, `error_log`, `LICENSE*` or composer/package files in any folder.
+
 ## Deploy
 
 No git on the host. Upload `master` with `git archive master | ssh … 'tar -x -C …/public_html/LIRS'`; `config.php`
-(mode 600) stays on the server and is never overwritten. Files removed from git (`old/`, `error_log`, the root `.sql`
-files) must be deleted on the server by hand. Schema changes go in `sql/` and are run by hand. Every change on the
+(mode 600) stays on the server and is never overwritten. Schema changes go in `sql/` and are run by hand. Every change on the
 server needs the owner's OK: show the exact commands first. Smoke test: pages answer 200 on PHP 8.5, and `config.php`,
 `connectDB.php`, `sql/`, `tools/`, `error_log` answer 403.
