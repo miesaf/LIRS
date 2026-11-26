@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,54 +10,32 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		if(isset($_POST["REG"]))
 		{
-			// Variables from pendaftaran.php
-			$S_ID		= mysqli_real_escape_string($condb, $_POST['S_ID']);
-			$S_NAME		= mysqli_real_escape_string($condb, $_POST['S_NAME']);
-			$S_IC		= mysqli_real_escape_string($condb, $_POST['S_IC']);
-			$S_PROG		= mysqli_real_escape_string($condb, $_POST['S_PROG']);
-			$S_PART		= mysqli_real_escape_string($condb, $_POST['S_PART']);
-			$S_PHONE	= mysqli_real_escape_string($condb, $_POST['S_PHONE']);
-			$S_MAIL		= mysqli_real_escape_string($condb, $_POST['S_MAIL']);
+			$S_ID		= request_id($_POST, 'S_ID');
+			$S_NAME		= request_text($_POST, 'S_NAME') ?? '';
+			$S_IC		= request_text($_POST, 'S_IC') ?? '';
+			$S_PROG		= request_text($_POST, 'S_PROG') ?? '';
+			$S_PART		= request_text($_POST, 'S_PART') ?? '';
+			$S_PHONE	= request_text($_POST, 'S_PHONE') ?? '';
+			$S_MAIL		= request_text($_POST, 'S_MAIL') ?? '';
 			
-			//SQL query command
-			$sql="INSERT INTO STUDENT (S_ID, S_NAME, S_IC, S_PROG, S_PART, S_PHONE, S_MAIL) VALUES ($S_ID, '$S_NAME', '$S_IC', '$S_PROG', '$S_PART', '$S_PHONE', '$S_MAIL')";
-			
-			// execute query
-			$exe_sql = mysqli_query($condb, $sql);
+			// The IC number is the student's password, so it must not be empty.
+			$exe_sql = $S_ID !== null && $S_NAME !== '' && $S_IC !== ''
+				&& db_query("INSERT INTO STUDENT (S_ID, S_NAME, S_IC, S_PROG, S_PART, S_PHONE, S_MAIL) VALUES (?, ?, ?, ?, ?, ?, ?)",
+					[$S_ID, $S_NAME, $S_IC, $S_PROG, $S_PART, $S_PHONE, $S_MAIL]);
 			
 			// confirming the record is added
 			if ($exe_sql)
 			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Registration successfull!\nRecord was saved into the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=view_stud.php?ID=' . $S_ID . '" />
-						</head>
-					</html>';
+				js_alert("Registration successfull!\nRecord was saved into the database.", "view_stud.php?ID=" . $S_ID);
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>";
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Registration failed!\nRecord was not saved into the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Registration failed!\nRecord was not saved into the database.");
 			}
 		}
 	?>
@@ -104,7 +83,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -172,13 +151,13 @@
 												<option disabled selected> Please choose </option>
 												<option disabled> </option>
 												<?php
-													$sql_choose = "SELECT * FROM PROGRAMME ORDER BY ID_PROG";
-													$result_choose = mysqli_query($condb, $sql_choose);
+													$result_choose = db_query("SELECT * FROM PROGRAMME ORDER BY ID_PROG");
 													while ($row = mysqli_fetch_array($result_choose))
 													{
 														$PROG1 = $row["ID_PROG"];
 														$PROG2 = $row["PROG"];
-														echo '<option value="' . $PROG1 . '"> ' . $PROG1 . ' - ' . $PROG2 . '</option>';
+														echo '<option value="' . e($PROG1) . '"> ' . e($PROG1 . ' - ' . $PROG2) . '</option>';
+
 													}
 												?>
 											</select>

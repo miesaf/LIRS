@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,55 +10,49 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'])
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login();
 		
 		if(isset($_POST["REG2"]))
 		{
-			// Variables from pendaftaran.php
-			$RV_STUD	= mysqli_real_escape_string($condb, $_POST['RV_STUD']);
-			$RV_IN		= mysqli_real_escape_string($condb, $_POST['RV_IN']);
-			$RV_OUT		= mysqli_real_escape_string($condb, $_POST['RV_OUT']);
-			$RV_ROOM	= mysqli_real_escape_string($condb, $_POST['RV_ROOM']);
+			// A student always books for themselves.
+			$RV_STUD	= $_SESSION['lirs_priv'] == "USER" ? (int) $_SESSION['lirs_ident'] : request_id($_POST, 'RV_STUD');
+			$RV_IN		= request_date($_POST, 'RV_IN');
+			$RV_OUT		= request_date($_POST, 'RV_OUT');
+			$RV_ROOM	= request_text($_POST, 'RV_ROOM') ?? '';
 			
-			//SQL query command
-			$sql="INSERT INTO RESERVE (RV_STUD, RV_IN, RV_OUT, RV_ROOM) VALUES ($RV_STUD, \"$RV_IN\", \"$RV_OUT\", \"$RV_ROOM\")";
-			
-			// execute query
-			$exe_sql = mysqli_query($condb, $sql);
+			// The room is checked again: it may have been taken since the list was shown.
+			$exe_sql = $RV_STUD !== null && $RV_IN !== null && $RV_OUT !== null && $RV_IN < $RV_OUT
+				&& lirs_room_free($RV_ROOM, $RV_IN, $RV_OUT)
+				&& db_query("INSERT INTO RESERVE (RV_STUD, RV_IN, RV_OUT, RV_ROOM) VALUES (?, ?, ?, ?)", [$RV_STUD, $RV_IN, $RV_OUT, $RV_ROOM]);
 			
 			// confirming the record is added
 			if ($exe_sql)
 			{
 				$last_id = mysqli_insert_id($condb);
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Registration successfull!\nRecord was saved into the database.");
-								window.alert("Your reservation ID is: ' . $last_id . '");
-							</script>
-							<meta http-equiv="refresh" content="0; url=view_resv.php?ID=' . $last_id . '" />
-						</head>
-					</html>';
+				js_alert("Registration successfull!\nRecord was saved into the database.\nYour reservation ID is: " . $last_id, "view_resv.php?ID=" . $last_id);
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>";
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Registration failed!\nRecord was not saved into the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Registration failed!\nRecord was not saved into the database.");
 			}
 		}
+		
+		// Step 1 -> step 2: the dates must be real and the check-out after the check-in.
+		if(isset($_POST["REG"]) && !isset($_POST["REG2"]))
+		{
+			$RV_STUD	= $_SESSION['lirs_priv'] == "USER" ? (int) $_SESSION['lirs_ident'] : request_id($_POST, 'RV_STUD');
+			$RV_IN		= request_date($_POST, 'RV_IN');
+			$RV_OUT		= request_date($_POST, 'RV_OUT');
+			
+			if ($RV_STUD === null || $RV_IN === null || $RV_OUT === null || $RV_IN >= $RV_OUT)
+			{
+				js_alert("Please choose the student, and a check-out date after the check-in date.");
+				exit;
+			}
+		}
+		
+		$CANCEL_URL = $_SESSION['lirs_priv'] == "USER" ? "list_resv.php" : "list_all.php";
 	?>
 
     <title>[LIRS] - Add Reservation</title>
@@ -103,7 +98,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -154,7 +149,7 @@
                                         <div class="form-group">
 											<label>Student ID</label>
 											<?php
-												if($_SESSION["PRIV"] == "SUPK")
+												if($_SESSION['lirs_priv'] == "SUPK")
 												{
 													?>
                                             <select class="form-control" name="RV_STUD">
@@ -164,8 +159,7 @@
 														$T_PROG		= null;
 														$T2_PROG	= null;
 														
-														$sql_choose = "SELECT S_ID, S_NAME, S_PROG FROM STUDENT ORDER BY S_PROG, S_NAME";
-														$result_choose = mysqli_query($condb, $sql_choose);
+														$result_choose = db_query("SELECT S_ID, S_NAME, S_PROG FROM STUDENT ORDER BY S_PROG, S_NAME");
 														while ($row = mysqli_fetch_array($result_choose))
 														{
 															
@@ -179,21 +173,25 @@
 																{
 																	echo "</optgroup>";
 																}
-																echo "<optgroup label=\"$S_PROG\">";
+																echo "<optgroup label=\"" . e($S_PROG) . "\">";
 																$T_PROG 	= $S_PROG;
 																$T2_PROG	= $S_PROG;
 															}
 															
-															echo '<option value="' . $S_ID . '"> ' . $S_ID . ' - ' . $S_NAME . '</option>';
+															echo '<option value="' . e($S_ID) . '"> ' . e($S_ID . ' - ' . $S_NAME) . '</option>';
+														}
+														if($T_PROG !== null)
+														{
+															echo "</optgroup>";
 														}
 													?>
 												</select>
 											<?php
 												}
-												elseif($_SESSION["PRIV"] == "USER")
+												elseif($_SESSION['lirs_priv'] == "USER")
 												{
-													$T_ID		= $_SESSION["IDENT"];
-													$T_NAME		= $_SESSION["NAME"];
+													$T_ID		= e($_SESSION['lirs_ident']);
+													$T_NAME		= e($_SESSION['lirs_name']);
 													
 													echo "<input class=\"form-control\" type=\"hidden\" name=\"RV_STUD\" value=\"$T_ID\"><input class=\"form-control\" type=\"text\" name=\"D_ID\" value=\"$T_ID - $T_NAME\" disabled>";
 												}
@@ -216,7 +214,7 @@
 								<br />
 								<button type="submit" class="btn btn-outline btn-success" form="add_resv" value="Submit">Proceed</button>
 								<button type="reset" class="btn btn-outline btn-warning" form="add_resv" value="Reset">Reset</button>
-								<a href="list_all.php"><button type="button" class="btn btn-outline btn-danger" >Cancel</button></a>
+								<a href="<?php echo e($CANCEL_URL); ?>"><button type="button" class="btn btn-outline btn-danger" >Cancel</button></a>
 								<br /><br />
 							</div>
 							<!-- /.row -->
@@ -228,47 +226,28 @@
 						
 						if(isset($_POST["REG"]))
 						{
-							$RV_STUD	= $_POST["RV_STUD"];
-							$RV_IN		= $_POST["RV_IN"];
-							$RV_OUT		= $_POST["RV_OUT"];
-							
-							$sql1		= "SELECT R_ID FROM ROOM WHERE R_STAT = true";
-							$result1	= mysqli_query($condb, $sql1);
-							while($row1 = mysqli_fetch_array($result1))
-							{
-								$R_ID		= $row1["R_ID"];
-								$AR[$R_ID]	= true;
-							}
-							
-							$sql2		= "SELECT RV_ROOM FROM RESERVE WHERE RV_IN < \"$RV_OUT\" AND RV_OUT > \"$RV_IN\" AND RV_STAT != \"DY\" GROUP BY RV_ROOM";
-							$result2	= mysqli_query($condb, $sql2);
-							while($row2 = mysqli_fetch_array($result2))
-							{
-								$RV_ROOM		= $row2["RV_ROOM"];
-								$AR[$RV_ROOM]	= false;
-							}
-							
-							
+							// rooms taken for these dates
+							$BUSY = lirs_busy_rooms($RV_IN, $RV_OUT);
 							?>
 						<div class="panel-body">
 							<div class="row">
 								<div class="col-lg-12">
 									<form role="form" id="add_resv2" action ="add_resv.php" method ="POST">
 										<input type="hidden" name="REG2" value="YES">
-										<input type="hidden" name="RV_STUD" value="<?php print($RV_STUD); ?>">
-										<input type="hidden" name="RV_IN" value="<?php print($RV_IN); ?>">
-										<input type="hidden" name="RV_OUT" value="<?php print($RV_OUT); ?>">
+										<input type="hidden" name="RV_STUD" value="<?php echo e($RV_STUD); ?>">
+										<input type="hidden" name="RV_IN" value="<?php echo e($RV_IN); ?>">
+										<input type="hidden" name="RV_OUT" value="<?php echo e($RV_OUT); ?>">
 										<div class="form-group">
 											<label>Student ID</label>
-                                            <input class="form-control" type="text" value="<?php print($RV_STUD); ?>" name="a" disabled>
+                                            <input class="form-control" type="text" value="<?php echo e($RV_STUD); ?>" name="a" disabled>
                                         </div>
 										<div class="form-group">
 											<label>Check-In Date</label>
-                                            <input class="form-control" type="date" value="<?php print($RV_IN); ?>" name="b" disabled>
+                                            <input class="form-control" type="date" value="<?php echo e($RV_IN); ?>" name="b" disabled>
                                         </div>
 										<div class="form-group">
 											<label>Check-Out Date</label>
-                                            <input class="form-control" type="date" value="<?php print($RV_OUT); ?>" name="c" disabled>
+                                            <input class="form-control" type="date" value="<?php echo e($RV_OUT); ?>" name="c" disabled>
                                         </div>
 										<div class="form-group">
 											<label>Room</label>
@@ -276,13 +255,7 @@
 												<option disabled selected> Please choose </option>
 												<option disabled> </option>
 												<?php
-													// Display room type
-													$DTYPE["TS"]	= "Two Single Bed";
-													$DTYPE["QB"]	= "One Queen Bed";
-													$DTYPE["KB"]	= "One King Bed";
-													
-													$sql_h		= "SELECT * FROM HOUSE ORDER BY H_NAME";
-													$result_h	= mysqli_query($condb, $sql_h);
+													$result_h	= db_query("SELECT * FROM HOUSE ORDER BY H_NAME");
 													
 													$ind	= 0;
 													while ($row_h = mysqli_fetch_array($result_h))
@@ -291,18 +264,17 @@
 														$H_ID 	= $row_h["H_ID"];
 														$H_NAME = $row_h["H_NAME"];
 														
-														echo "<optgroup label=\"$H_NAME\">";
+														echo "<optgroup label=\"" . e($H_NAME) . "\">";
 														
-														$sql_r		= "SELECT R_ID, R_TYPE FROM ROOM WHERE R_STAT = TRUE AND R_HOUSE = \"$H_ID\" ORDER BY R_TYPE";
-														$result_r	= mysqli_query($condb, $sql_r);
+														$result_r	= db_query("SELECT R_ID, R_TYPE FROM ROOM WHERE R_STAT = TRUE AND R_HOUSE = ? ORDER BY R_TYPE", [$H_ID]);
 														while ($row_r = mysqli_fetch_array($result_r))
 														{
 															$R_ID		= $row_r["R_ID"];
 															$R_TYPE		= $row_r["R_TYPE"];
 															
-															if($AR[$R_ID] == true)
+															if(!isset($BUSY[$R_ID]))
 															{
-																echo '<option value="' . $R_ID . '"> ' . $R_ID . ' - ' . $DTYPE[$R_TYPE] . '</option>';
+																echo '<option value="' . e($R_ID) . '"> ' . e($R_ID . ' - ' . (LIRS_ROOM_TYPES[$R_TYPE] ?? $R_TYPE)) . '</option>';
 																$ind++;
 															}
 														}
@@ -324,8 +296,9 @@
 							<div class="row" align="center">
 								<br />
 								<button type="submit" class="btn btn-outline btn-success" form="add_resv2" value="Submit">Submit</button>
-								<button class="btn btn-outline btn-warning" onclick="goBack()">Go Back</button>
-								<a href="list_all.php"><button type="button" class="btn btn-outline btn-danger" >Cancel</button></a>
+								<button type="button" class="btn btn-outline btn-warning" onclick="goBack()">Go Back</button>
+								<a href="<?php echo e($CANCEL_URL); ?>"><button type="button" class="btn btn-outline btn-danger" >Cancel</button></a>
+
 								<br /><br />
 							</div>
 							<!-- /.row -->

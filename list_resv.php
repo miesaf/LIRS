@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,13 +10,8 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "USER")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('USER');
 	?>
 
     <title>[LIRS] - List Reservations</title>
@@ -67,7 +63,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -121,102 +117,34 @@
                                     </thead>
                                     <tbody>
                         <?php
-							$ID = $_SESSION["IDENT"];
-							
-							// create the listing query
-							$sql = "SELECT * FROM RESERVE WHERE RV_STUD = $ID ORDER BY RV_DATE";
-								
-							// execute listing query
-							$result	= mysqli_query($condb, $sql) or die("SQL select statement failed");
-							
 							// Initialise index number
 							$BIL = 1;
 							
-							// Display house name array
-							$sql_dhn	= "SELECT * FROM HOUSE";
-							$result_dhn	= mysqli_query($condb, $sql_dhn);
-							while($row_dhn	= mysqli_fetch_array($result_dhn))
-							{
-								$DHN			= $row_dhn["H_ID"];
-								$DHN2			= $row_dhn["H_NAME"];
-								$DHOUSE[$DHN]	= $DHN2;
-							}
-							
-							// Display house ID name array
-							$sql_dhi	= "SELECT R_ID, R_HOUSE FROM ROOM";
-							$result_dhi	= mysqli_query($condb, $sql_dhi);
-							while($row_dhi	= mysqli_fetch_array($result_dhi))
-							{
-								$DHI		= $row_dhi["R_ID"];
-								$DHI2		= $row_dhi["R_HOUSE"];
-								$DHID[$DHI]	= $DHI2;
-							}
-							
-							// Display month name array
-							$MONTH["01"]	= "Jan";
-							$MONTH["02"]	= "Feb";
-							$MONTH["03"]	= "Mar";
-							$MONTH["04"]	= "Apr";
-							$MONTH["05"]	= "May";
-							$MONTH["06"]	= "Jun";
-							$MONTH["07"]	= "Jul";
-							$MONTH["08"]	= "Aug";
-							$MONTH["09"]	= "Sep";
-							$MONTH["10"]	= "Oct";
-							$MONTH["11"]	= "Nov";
-							$MONTH["12"]	= "Dec";
-							
-							// Display status name array
-							$R_STAT["AP"]	= "Approved";
-							$R_STAT["DY"]	= "Denied";
-							$R_STAT["PG"]	= "Pending";
+							// the student's own reservations
+							$result	= db_query("SELECT RESERVE.*, HOUSE.H_NAME FROM RESERVE LEFT JOIN ROOM ON ROOM.R_ID = RESERVE.RV_ROOM LEFT JOIN HOUSE ON HOUSE.H_ID = ROOM.R_HOUSE WHERE RV_STUD = ? ORDER BY RV_DATE", [$_SESSION['lirs_ident']]) or die("SQL select statement failed");
+							$DSN	= e($_SESSION['lirs_name']);
 							
 							// iterate through all rows in result set
 							while ($row = mysqli_fetch_array($result))
 							{
 								// extract specific fields
-								$RV_ID		= $row["RV_ID"];
-								$RV_STUD	= $row["RV_STUD"];
-								$RV_DATE	= $row["RV_DATE"];
-								$RV_IN		= $row["RV_IN"];
-								$RV_OUT		= $row["RV_OUT"];
-								$RV_ROOM	= $row["RV_ROOM"];
-								$RV_STAT	= $row["RV_STAT"];
+								$RV_ID		= e($row["RV_ID"]);
+								$RV_STUD	= e($row["RV_STUD"]);
+								$RV_ROOM	= e($row["RV_ROOM"]);
+								$DHOUSE		= e($row["H_NAME"]);
+								$D_DATE		= e(lirs_date($row["RV_DATE"]));
+								$D_IN		= e(lirs_date($row["RV_IN"]));
+								$D_OUT		= e(lirs_date($row["RV_OUT"]));
+								$D_STAT		= e(LIRS_STATUS[$row["RV_STAT"]] ?? $row["RV_STAT"]);
+								$S_CLR		= e(LIRS_STATUS_COLOUR[$row["RV_STAT"]] ?? '');
 								
-								$DSN		= $_SESSION['NAME'];
-								$DHID2		= $DHID[$RV_ROOM];
-								
-								// Reserve date formater
-								$R_YY		= substr($RV_DATE, 0, 4);
-								$R_MM		= substr($RV_DATE, 5, 2);
-								$R_DD		= substr($RV_DATE, 8, 2);
-								
-								// Check-In date formater
-								$I_YY		= substr($RV_IN, 0, 4);
-								$I_MM		= substr($RV_IN, 5, 2);
-								$I_DD		= substr($RV_IN, 8, 2);
-								
-								// Check-Out date formater
-								$O_YY		= substr($RV_OUT, 0, 4);
-								$O_MM		= substr($RV_OUT, 5, 2);
-								$O_DD		= substr($RV_OUT, 8, 2);
-								
-								// Status color
-								$S_CLR	= null;
-								if($RV_STAT == "AP")
-								{	$S_CLR = "#2eb82e";	}
-								elseif($RV_STAT == "DY")
-								{	$S_CLR = "red";	}
-								elseif($RV_STAT == "PG")
-								{	$S_CLR = "#ff9900";	}
-								
-								// output student information
+								// output reservation information
 								echo "<tr>\n\t\t\t\t\t\t\t";
 								echo "<td align=\"center\">$BIL</td>\n\t\t\t\t\t\t\t";
-								echo "<td align=\"center\" title=\"Click here to view full detail\"><a href=\"view_resv.php?ID=$RV_ID\" target='_blank'><b>$RV_ID</b></a><br>($R_DD $MONTH[$R_MM] $R_YY)</td>\n\t\t\t\t\t\t\t
+								echo "<td align=\"center\" title=\"Click here to view full detail\"><a href=\"view_resv.php?ID=$RV_ID\" target='_blank'><b>$RV_ID</b></a><br>($D_DATE)</td>\n\t\t\t\t\t\t\t
 										<td align=\"center\">$DSN<br>(Student ID: $RV_STUD)</td>\n\t\t\t\t\t\t\t
-										<td align=\"center\">Check-In: <font color=\"#2eb82e\"><b>$I_DD $MONTH[$I_MM] $I_YY</b></font><br>Check-Out: <font color=\"red\"><b>$O_DD $MONTH[$O_MM] $O_YY</b></font></td>\n\t\t\t\t\t\t\t
-							<td align=\"center\"><font color=\"$S_CLR\"><b>$R_STAT[$RV_STAT]</b></font><br>Room: <b>$RV_ROOM ($DHOUSE[$DHID2])</b></td>\n\t\t\t\t\t\t\t";
+										<td align=\"center\">Check-In: <font color=\"#2eb82e\"><b>$D_IN</b></font><br>Check-Out: <font color=\"red\"><b>$D_OUT</b></font></td>\n\t\t\t\t\t\t\t
+							<td align=\"center\"><font color=\"$S_CLR\"><b>$D_STAT</b></font><br>Room: <b>$RV_ROOM ($DHOUSE)</b></td>\n\t\t\t\t\t\t\t";
 								echo "</tr>\n\t\t\t\t\t\t";
 								
 								$BIL++;

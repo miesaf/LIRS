@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,62 +10,39 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		if(isset($_POST["REG"]))
 		{
-			// Variables from pendaftaran.php
-			$T_ID		= mysqli_real_escape_string($condb, $_POST['T_ID']);
-			$R_ID		= mysqli_real_escape_string($condb, $_POST['R_ID']);
-			$R_TYPE		= mysqli_real_escape_string($condb, $_POST['R_TYPE']);
-			$R_HOUSE	= mysqli_real_escape_string($condb, $_POST['R_HOUSE']);
-			$R_STAT		= mysqli_real_escape_string($condb, $_POST['R_STAT']);
+			$T_ID		= request_text($_POST, 'T_ID') ?? '';
+			$R_ID		= request_text($_POST, 'R_ID') ?? '';
+			$R_TYPE		= request_text($_POST, 'R_TYPE') ?? '';
+			$R_HOUSE	= request_text($_POST, 'R_HOUSE') ?? '';
+			$R_STAT		= request_text($_POST, 'R_STAT');
 			
-			//SQL query command
-			$sql="UPDATE ROOM SET R_ID = \"$R_ID\", R_TYPE = \"$R_TYPE\", R_HOUSE = \"$R_HOUSE\", R_STAT = $R_STAT WHERE R_ID = \"$T_ID\"";
+			$exe_sql = $T_ID !== '' && $R_ID !== '' && isset(LIRS_ROOM_TYPES[$R_TYPE]) && in_array($R_STAT, ["0", "1"], true)
+				&& db_query("UPDATE ROOM SET R_ID = ?, R_TYPE = ?, R_HOUSE = ?, R_STAT = ? WHERE R_ID = ?", [$R_ID, $R_TYPE, $R_HOUSE, (int) $R_STAT, $T_ID]);
 			
-			// execute query
-			$exe_sql = mysqli_query($condb, $sql);
-			
-			// confirming the record is added
+			// confirming the record is saved
 			if ($exe_sql)
 			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Edition successfull!\nRecord was saved into the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=list_room.php" />
-						</head>
-					</html>';
+				js_alert("Edition successfull!\nRecord was saved into the database.", "list_room.php");
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>";
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Edition failed!\nRecord was not saved into the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Edition failed!\nRecord was not saved into the database.");
 			}
 		}
 		
-		if(isset($_GET["ID"]) && ($_GET["ID"] != null))
+		$R_ID		= null;
+		$R_TYPE		= null;
+		$R_HOUSE	= null;
+		$R_STAT		= null;
+		if(request_text($_GET, "ID"))
 		{
-			$TEMP_ID	= $_GET["ID"];
-			$R_ID		= null;
-			$sql_choose = "SELECT * FROM ROOM WHERE R_ID = \"$TEMP_ID\"";
-			$result_choose = mysqli_query($condb, $sql_choose);
-			while ($row = mysqli_fetch_array($result_choose))
+			$row = db_row("SELECT * FROM ROOM WHERE R_ID = ?", [request_text($_GET, "ID")]);
+			if ($row)
 			{
 				$R_ID 		= $row["R_ID"];
 				$R_TYPE 	= $row["R_TYPE"];
@@ -74,7 +52,7 @@
 		}
 	?>
 
-    <title>[LIRS] - Edit Student</title>
+    <title>[LIRS] - Edit Room</title>
 	<link rel="shortcut icon" href="favicon.ico">
 
     <!-- Bootstrap Core CSS -->
@@ -117,7 +95,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -158,7 +136,7 @@
                             <b>Room Amendment Form</b>
                         </div>
 					<?php
-						if(isset($_GET["ID"]) && ($_GET["ID"] != null) && ($R_ID != null))
+						if($R_ID !== null && !isset($_POST["REG"]))
 						{
 					?>
                         <div class="panel-body">
@@ -166,10 +144,10 @@
                                 <div class="col-lg-12">
                                     <form role="form" id="edit_room" action ="edit_room.php" method ="POST">
 										<input type="hidden" name="REG" value="YES">
-										<input type="hidden" name="T_ID" value="<?php print($R_ID); ?>">
+										<input type="hidden" name="T_ID" value="<?php echo e($R_ID); ?>">
                                         <div class="form-group">
 											<label>Room ID</label>
-                                            <input class="form-control" type="text" size="5" maxlength="5" name="R_ID" value="<?php print($R_ID); ?>">
+                                            <input class="form-control" type="text" size="5" maxlength="5" name="R_ID" value="<?php echo e($R_ID); ?>">
 											<p class="help-block">Eg: LI001</p>
                                         </div>
 										<div class="form-group">
@@ -188,8 +166,7 @@
 												<option disabled selected> Please choose </option>
 												<option disabled> </option>
 												<?php
-													$sql_choose = "SELECT * FROM HOUSE ORDER BY H_NAME";
-													$result_choose = mysqli_query($condb, $sql_choose);
+													$result_choose = db_query("SELECT * FROM HOUSE ORDER BY H_NAME");
 													while ($row = mysqli_fetch_array($result_choose))
 													{
 														$H1 = $row["H_ID"];
@@ -199,7 +176,7 @@
 														if($H1 == $R_HOUSE)
 														{ $sel = "selected"; }
 														
-														echo '<option value="' . $H1 . '" ' . $sel . '> ' . $H2 . '</option>';
+														echo '<option value="' . e($H1) . '" ' . $sel . '> ' . e($H2) . '</option>';
 													}
 												?>
 											</select>
@@ -209,8 +186,9 @@
 											<select class="form-control" name="R_STAT">
 												<option disabled selected> Please choose </option>
 												<option disabled> </option>
-												<option value="1" <?php if($R_STAT == true){ echo "selected"; } ?>> Available</option>
-												<option value="0" <?php if($R_STAT == false){ echo "selected"; } ?>> Not Available</option>
+												<option value="1" <?php if($R_STAT == 1){ echo "selected"; } ?>> Available</option>
+												<option value="0" <?php if($R_STAT == 0){ echo "selected"; } ?>
+> Not Available</option>
 											</select>
 										</div>
 								</div>

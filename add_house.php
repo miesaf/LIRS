@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,49 +10,25 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		if(isset($_POST["REG"]))
 		{
-			// Variables from pendaftaran.php
-			$H_ID		= mysqli_real_escape_string($condb, $_POST['H_ID']);
-			$H_NAME		= mysqli_real_escape_string($condb, $_POST['H_NAME']);
+			$H_ID		= request_text($_POST, 'H_ID') ?? '';
+			$H_NAME		= request_text($_POST, 'H_NAME') ?? '';
 			
-			//SQL query command
-			$sql="INSERT INTO HOUSE (H_ID, H_NAME) VALUES ('$H_ID', '$H_NAME')";
-			
-			// execute query
-			$exe_sql = mysqli_query($condb, $sql);
+			$exe_sql = $H_ID !== '' && $H_NAME !== ''
+				&& db_query("INSERT INTO HOUSE (H_ID, H_NAME) VALUES (?, ?)", [$H_ID, $H_NAME]);
 			
 			// confirming the record is added
 			if ($exe_sql)
 			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Registration successfull!\nRecord was saved into the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=list_house.php" />
-						</head>
-					</html>';
+				js_alert("Registration successfull!\nRecord was saved into the database.", "list_house.php");
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>";
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Registration failed!\nRecord was not saved into the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Registration failed!\nRecord was not saved into the database.");
 			}
 		}
 	?>
@@ -99,7 +76,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">

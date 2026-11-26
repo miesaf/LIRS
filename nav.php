@@ -1,8 +1,9 @@
+<?php if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; } // include only ?>
 <li>
 	<a href="main.php"><i class="fa fa-dashboard fa-fw"></i> Main Page</a>
 </li>
 <?php
-if($_SESSION["PRIV"] == "USER")
+if($_SESSION['lirs_priv'] == "USER")
 {
 ?>
 <li>
@@ -16,7 +17,7 @@ if($_SESSION["PRIV"] == "USER")
 </li>
 <?php
 }
-if($_SESSION["PRIV"] == "SUPK")
+if($_SESSION['lirs_priv'] == "SUPK")
 {
 ?>
 <li>

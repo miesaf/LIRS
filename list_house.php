@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,47 +10,21 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		if(isset($_GET["DEL"]))
 		{
-			$DEL_ID	= $_GET["DEL"];
+			$DEL_ID	= request_text($_GET, "DEL") ?? '';
 			
-			//SQL query command
-			$sql="DELETE FROM HOUSE WHERE H_ID = '$DEL_ID'";
-			
-			// execute query
-			$exe_sql = mysqli_query($condb, $sql);
-			
-			// confirming the record is added
-			if ($exe_sql)
+			// A house that still has rooms is not deleted (foreign key).
+			if (db_query("DELETE FROM HOUSE WHERE H_ID = ?", [$DEL_ID]) && db_affected() === 1)
 			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("House was removed from the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=list_house.php" />
-						</head>
-					</html>';
+				js_alert("House was removed from the database.", "list_house.php");
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>";
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Failed to remove house from the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Failed to remove house from the database.", "list_house.php");
 			}
 		}
 	?>
@@ -103,7 +78,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -157,19 +132,20 @@
                                     <tbody>
                         <?php                            
 							$BIL = 1;
-							$sql_choose = "SELECT * FROM HOUSE ORDER BY H_NAME";
-							$result_choose = mysqli_query($condb, $sql_choose);
+							$result_choose = db_query("SELECT * FROM HOUSE ORDER BY H_NAME");
 							while ($row = mysqli_fetch_array($result_choose))
 							{
-								$H_ID 	= $row["H_ID"];
-								$H_NAME = $row["H_NAME"];
+								$H_ID 	= e($row["H_ID"]);
+								$H_NAME = e($row["H_NAME"]);
+								$H_URL	= e(rawurlencode($row["H_ID"]));
+								$H_JS	= e(js($row["H_ID"]));
 								
 								// output house information
 								echo "<tr>\n\t\t\t\t\t\t\t";
 								echo "<td align=\"center\">$BIL</td>\n\t\t\t\t\t\t\t";
 								echo "<td align=\"center\">$H_ID</td>\n\t\t\t\t\t\t\t
 										<td align=\"center\">$H_NAME</td>\n\t\t\t\t\t\t\t";
-								echo "<td align=\"center\"> <a href=\"edit_house.php?ID=$H_ID\"><button type=\"button\"  class=\"btn btn-outline btn-warning\">Edit</button></a> <button type=\"button\"  class=\"btn btn-outline btn-danger\" value=\"Delete\" onClick='confirmDel(\"$H_ID\")'>Delete</button> </td>\n\t\t\t\t\t\t\t";
+								echo "<td align=\"center\"> <a href=\"edit_house.php?ID=$H_URL\"><button type=\"button\"  class=\"btn btn-outline btn-warning\">Edit</button></a> <button type=\"button\"  class=\"btn btn-outline btn-danger\" value=\"Delete\" onClick='confirmDel($H_JS)'>Delete</button> </td>\n\t\t\t\t\t\t\t";
 								echo "</tr>\n\t\t\t\t\t\t";
 								
 								$BIL++;
@@ -224,7 +200,8 @@
 			var del = confirm("Do you want to delete this house?");
 			if (del == true)
 			{
-				window.location.assign("list_house.php?DEL=" + nums);
+				window.location.assign("list_house.php?DEL=" + encodeURIComponent(nums));
+
 			} else 
 			{
 				alert("House was not deleted.");

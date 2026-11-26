@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <html lang="en">
 
 <head>
@@ -9,60 +10,35 @@
 	<meta name="description" content="Ledang Inn Reservation System" />
 	<?php
 		session_start();
-		if(!$_SESSION['LOGIN'] || $_SESSION['PRIV'] != "SUPK")
-		{
-			header("Location: index.php?error=exp");
-			exit;
-		}
-		
-		include("connectDB.php");
+		require_once __DIR__ . '/connectDB.php';
+		require_login('SUPK');
 		
 		if(isset($_POST["REG"]))
 		{
-			// Variables from pendaftaran.php
-			$T_ID		= mysqli_real_escape_string($condb, $_POST['T_ID']);
-			$H_ID		= mysqli_real_escape_string($condb, $_POST['H_ID']);
-			$H_NAME		= mysqli_real_escape_string($condb, $_POST['H_NAME']);
+			$T_ID		= request_text($_POST, 'T_ID') ?? '';
+			$H_ID		= request_text($_POST, 'H_ID') ?? '';
+			$H_NAME		= request_text($_POST, 'H_NAME') ?? '';
 			
-			//SQL query command
-			$sql="UPDATE HOUSE SET H_ID = \"$H_ID\", H_NAME = \"$H_NAME\" WHERE H_ID = \"$T_ID\"";
+			$exe_sql = $T_ID !== '' && $H_ID !== '' && $H_NAME !== ''
+				&& db_query("UPDATE HOUSE SET H_ID = ?, H_NAME = ? WHERE H_ID = ?", [$H_ID, $H_NAME, $T_ID]);
 			
-			// execute query
-			$exe_sql = mysqli_query($condb, $sql);
-			
-			// confirming the record is added
+			// confirming the record is saved
 			if ($exe_sql)
 			{
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Edition successfull!\nRecord was saved into the database.");
-							</script>
-							<meta http-equiv="refresh" content="0; url=list_house.php" />
-						</head>
-					</html>';
+				js_alert("Edition successfull!\nRecord was saved into the database.", "list_house.php");
 			}
 			else
 			{
-				echo "SQL insert statement failed.<br>";
-				echo '<html>
-						<head>
-							<script>
-								window.alert("Edition failed!\nRecord was not saved into the database.");
-								window.history.go(-1);
-							</script>
-						</head>
-					</html>';
+				js_alert("Edition failed!\nRecord was not saved into the database.");
 			}
 		}
 		
-		if(isset($_GET["ID"]) && ($_GET["ID"] != null))
+		$H_ID	= null;
+		$H_NAME	= null;
+		if(request_text($_GET, "ID"))
 		{
-			$TEMP_ID	= $_GET["ID"];
-			$H_ID		= null;
-			$sql_choose = "SELECT * FROM HOUSE WHERE H_ID = \"$TEMP_ID\"";
-			$result_choose = mysqli_query($condb, $sql_choose);
-			while ($row = mysqli_fetch_array($result_choose))
+			$row = db_row("SELECT * FROM HOUSE WHERE H_ID = ?", [request_text($_GET, "ID")]);
+			if ($row)
 			{
 				$H_ID 		= $row["H_ID"];
 				$H_NAME 	= $row["H_NAME"];
@@ -113,7 +89,7 @@
 
             <ul class="nav navbar-top-links navbar-right">
 				<li class="dropdown">
-					Welcome, <strong><?php print($_SESSION["NAME"]); ?></strong>
+					Welcome, <strong><?php echo e($_SESSION['lirs_name']); ?></strong>
 				</li>				
                 <li class="dropdown">
 					<a href="logout.php">
@@ -154,7 +130,8 @@
                             <b>House Amendment Form</b>
                         </div>
 					<?php
-						if(isset($_GET["ID"]) && ($_GET["ID"] != null) && ($H_ID != null))
+						if($H_ID !== null && !isset($_POST["REG"]))
+
 						{
 					?>
                         <div class="panel-body">
@@ -162,15 +139,15 @@
                                 <div class="col-lg-12">
                                     <form role="form" id="edit_house" action ="edit_house.php" method ="POST">
 										<input type="hidden" name="REG" value="YES">
-										<input type="hidden" name="T_ID" value="<?php print($H_ID); ?>">
+										<input type="hidden" name="T_ID" value="<?php echo e($H_ID); ?>">
                                         <div class="form-group">
 											<label>House ID</label>
-                                            <input class="form-control" type="text" size="5" maxlength="3" name="H_ID" value="<?php print($H_ID); ?>">
+                                            <input class="form-control" type="text" size="5" maxlength="3" name="H_ID" value="<?php echo e($H_ID); ?>">
 											<p class="help-block">Eg: LI</p>
                                         </div>
 										<div class="form-group">
 											<label>House Name</label>
-                                            <input class="form-control" type="text" size="50" maxlength="100" name="H_NAME" value="<?php print($H_NAME); ?>">
+                                            <input class="form-control" type="text" size="50" maxlength="100" name="H_NAME" value="<?php echo e($H_NAME); ?>">
                                         </div>
 								</div>
 								<!-- /.col-lg-12 -->
